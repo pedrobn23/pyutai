@@ -1,0 +1,4 @@
+# Ignore dowloaded files. To get them, please run the associated script.
+*.bif
+*.bif.gz
+*.uai
