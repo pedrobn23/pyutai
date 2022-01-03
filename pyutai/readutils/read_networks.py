@@ -2,23 +2,49 @@ import collections
 import logging
 import os
 import pprint
+import difflib
 
 from pgmpy import readwrite
 from pgmpy import models
 
 
-def read_uai(path: str) -> models.BayesianNetwork:
-    try:
-        reader = readwrite.UAIReader(path=path)
-    except OSError as ose:
-        raise ValueError('Error ocurred reading network file') from ose
+def is_bayesian(path: str) -> bool:
 
-    if (net_type := reader.get_network_type()) != 'BAYESIAN':
+    try:
+        net_file = open(path, 'rb')
+
+        # the first line in a UAI file contains type
+        net_type = net_file.readline().strip()
+        ret = net_type == b'BAYES'
+
+    except OSError as ose:
         raise ValueError(
-            f'Only networks of type BAYES are allowed, network in {path} is {net_type}.'
-        )
-    else:
-        print('Look at me Pedrooooo!!')
+            f'Error ocurred reading network file {path!r}') from ose
+
+    finally:
+        net_file.close()
+
+    return ret
+
+
+def read(path: str) -> models.BayesianNetwork:
+    try:
+        if path.endswith(".uai"):
+            if not is_bayesian(path):
+                raise ValueError(f'network in {path!r} is not BAYES.' +
+                                 f' Only networks of type BAYES are allowed.')
+
+            reader = readwrite.UAIReader(path=path)
+
+        elif path.endswith(".bif"):
+            reader = readwrite.BIFReader(path=path)
+        else:
+            raise ValueError(
+                f'File extension for path {path!r} is not supported.')
+
+    except OSError as ose:
+        raise ValueError(
+            f'Error ocurred reading network file {path!r}') from ose
 
     return reader
 
@@ -37,5 +63,17 @@ def classify_networks(path: str):
 
 
 if __name__ == "__main__":
-    for path in classify_networks("../../networks")['BAYES']:
-        read_uai(path)
+    path = '../../networks/BN_58.uai'
+    #path = '../../networks/asia.bif'
+
+    try:
+        reader = readwrite.UAIReader(path=path)
+        #reader = read_uai(path)
+        model = reader.get_model()
+
+        for cpd in model.get_cpds():
+            print(cpd)
+            print(type(cpd.values))
+            print(cpd.values.shape)
+    except:
+        logging.exception('msg')
