@@ -63,12 +63,11 @@ def classify_networks(path: str):
 
 
 if __name__ == "__main__":
-    path = '../../networks/BN_58.uai'
-    #path = '../../networks/asia.bif'
+    #path = '../../networks/BN_58.uai'
+    path = '../../networks/asia.bif'
 
     try:
-        reader = readwrite.UAIReader(path=path)
-        #reader = read_uai(path)
+        reader = read(path)
         model = reader.get_model()
 
         for cpd in model.get_cpds():
