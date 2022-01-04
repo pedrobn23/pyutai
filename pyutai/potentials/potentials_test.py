@@ -2,11 +2,11 @@
 Module that implements automatic test cases for TreePotential class.
 """
 
-import TestCase, main
-import 
+import unittest
+import numpy as np
 
 
-class TreePotentialTestCase(TestCase):
+class TreeTestCase(unittest.TestCase):
     """
     Test Class for TreePotential class.
     """
@@ -14,11 +14,16 @@ class TreePotentialTestCase(TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        array1 = np.array([[1,1],[2,2]])
-        array2 = np.array([])
-        
-        self.tree1 = TreePotential.from_array(array1)
-        self.tree2 = TreePotentital.from_array(array2)
+        array1 = np.array([[1, 1], [2, 2]])
+        array2 = np.array([1])
+
+        self.tree1 = Tree.from_array(array1)
+        self.tree2 = Tree.from_array(array2)
+
+    def test_from_array(self):
+
+        with self.assertRaise(ValueError):
+            Tree.from_array(np.array([]))
 
 
 if __name__ == '__main__':
