@@ -47,7 +47,7 @@ class BranchNode(Node):
         return False
 
     def __repr__(self) -> str:
-        return f'{self.__class__}({self.name!r}, {self.children!r})'
+        return f'{self.__class__!r}({self.name!r}, {self.children!r})'
 
 
 class LeafNode(Node):
@@ -60,9 +60,10 @@ class LeafNode(Node):
         return True
 
     def __repr__(self) -> str:
-        return f'{self.__class__}({self.name!r}, {self.values!r})'
+        return f'{self.__class__!r}({self.name!r}, {self.values!r})'
 
 
+# Deberiamos hacer la poda directamente?
 def _from_array(data: np.ndarray, assigned_vars: typing.List[int]) -> Node:
     var = len(assigned_vars)  # Next variable to be assigned
     cardinality = data.shape[var]
@@ -70,21 +71,12 @@ def _from_array(data: np.ndarray, assigned_vars: typing.List[int]) -> Node:
     # If this is the last variable
     if len(data.shape) - 1 == var:
         values = []
-        print(var)
-
         for i in range(cardinality):
-            print('assigned_vars+[i]:', assigned_vars + [i])
-            print('data[tuple(assigned_vars + [i])]:\n',
-                  data[tuple(assigned_vars + [i])])
-
             values.append(data[tuple(assigned_vars + [i])])
-
-        print(values)
         return LeafNode(var, values)
 
     # Otherwise assign a new variable to each child
     else:
-        print(assigned_vars)
         children = [
             _from_array(data, assigned_vars + [i]) for i in range(cardinality)
         ]
@@ -103,30 +95,49 @@ class Tree:
             raise ValueError('Array should be non-empty')
 
         return cls(root=_from_array(data, []),
-                   var=len(data.shape),
+                   n_variables=len(data.shape),
                    cardinality=data.shape)
 
-    def _access(node, it):
-        if node.is_terminal():
-            ### return node value
-            pass
-        else:
-            ### recursive step
-            pass
+    @classmethod
+    def _access(cls, node: Node, states: typing.Iterable) -> float:
+        for index in states:
+            if node.is_terminal():
+                return node.values[index]
+            else:
+                node = node.children[index]
 
-    def access(self, states: typing.List[int]):
+    # DUDA: Should I use variadic input instead
+    def access(self, states: typing.List[int]) -> float:
 
-        if len(states) != n_variables:
+        if len(states) != self.n_variables:
             raise ValueError(f'Incorrect number of variables; ' +
                              f'expected: {n_variables}, received {len(states)}')
 
-        for var, (value, bound) in enumerate(zip(cardinality, states)):
+        for var, (value, bound) in enumerate(zip(states, self.cardinality)):
             if value >= bound:
-                raise ValueError(f'Value for variable {var} is out of bound;' *
+                raise ValueError(f'Value for variable {var} is out of bound;' +
                                  f'received: {value}, limit : {bound}.')
 
-    def branch(self):
+        return Tree._access(self.root, states)
+
+    @classmethod
+    def _retraint(cls, node: Node, variable: int, state: int):
         pass
+
+    # Debería hacerlo inplace o cambiar?
+    def restraint(self,
+                  variable: int,
+                  state: int,
+                  *,
+                  inplace: bool = False) -> Node or None:
+
+        if inplace:
+            Tree._restraint(self.root, variable, state)
+
+        else:
+            node = node.copy()
+            Tree._restraint(node, variable, state)
+            return node
 
 
 if __name__ == "__main__":
@@ -136,3 +147,5 @@ if __name__ == "__main__":
     tree2 = Tree.from_array(array2)
     print(repr(tree1))
     print(repr(tree2))
+    tree1.access([0, 0])
+    tree2.access([1, 1, 1])
