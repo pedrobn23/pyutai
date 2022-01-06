@@ -13,6 +13,7 @@ This module contains the different implementations of potentials that are to be 
 import abc
 import attr
 import collections
+import copy
 import pprint
 import typing
 
@@ -36,6 +37,10 @@ class Node(abc.ABC):
     def __repr__(self) -> str:
         pass
 
+    @abc.abstractmethod
+    def __deepcopy__(self) -> Node:
+        pass
+
 
 class BranchNode(Node):
 
@@ -49,6 +54,9 @@ class BranchNode(Node):
     def __repr__(self) -> str:
         return f'{self.__class__!r}({self.name!r}, {self.children!r})'
 
+    def __deepcopy__(self) -> Node:
+        return self.__cls__(self.name, copy.deepcopy(self.children))
+
 
 class LeafNode(Node):
 
@@ -61,6 +69,9 @@ class LeafNode(Node):
 
     def __repr__(self) -> str:
         return f'{self.__class__!r}({self.name!r}, {self.values!r})'
+
+    def __deepcopy__(self) -> Node:
+        return self.__cls__(self.name, copy.deepcopy(self.values))
 
 
 # Deberiamos hacer la poda directamente?
@@ -89,6 +100,8 @@ class Tree:
     n_variables = attr.ib(type=int)
     cardinality = attr.ib(type=typing.Tuple[int])
 
+    restraint_vars = attr.ib(type=typing.Dict[int, int], init=False)
+
     @classmethod
     def from_array(cls, data: np.ndarray) -> Node:
         if data.size == 0:
@@ -100,13 +113,18 @@ class Tree:
 
     @classmethod
     def _access(cls, node: Node, states: typing.Iterable) -> float:
-        for index in states:
+        for var, state in enumerate(states):
+            # If already restricted we choose restricted variable
+            index = self.restraint_vars[
+                var] if var in self.restraint_vars else state
+
             if node.is_terminal():
                 return node.values[index]
             else:
                 node = node.children[index]
 
     # DUDA: Should I use variadic input instead
+    # Obviar variables restrained no?
     def access(self, states: typing.List[int]) -> float:
 
         if len(states) != self.n_variables:
@@ -118,26 +136,26 @@ class Tree:
                 raise ValueError(f'Value for variable {var} is out of bound;' +
                                  f'received: {value}, limit : {bound}.')
 
+        if self.restrained_variables:
+            logging.warning(
+                f'variables {self.restrained_variables.keys} will be ignored as they are restrained.'
+            )
+
         return Tree._access(self.root, states)
 
-    @classmethod
-    def _retraint(cls, node: Node, variable: int, state: int):
-        pass
-
     # Debería hacerlo inplace o cambiar?
-    def restraint(self,
-                  variable: int,
-                  state: int,
-                  *,
-                  inplace: bool = False) -> Node or None:
+    def restraint(self, variable: int, value: int):
+        if variable >= len(self.cardinality):
+            raise ValueError(f'Invalid value {variable} for variable.')
 
-        if inplace:
-            Tree._restraint(self.root, variable, state)
+        if value >= (bound := self.cardinality[variable]):
+            raise ValueError(f'Value for variable {variable} is out of bound;' +
+                             f'received: {value}, limit : {bound}.')
 
-        else:
-            node = node.copy()
-            Tree._restraint(node, variable, state)
-            return node
+        self.restraint_vars[variable] = state
+
+    def unrestraint(self, variable: int):
+        self.restraint_vars.pop(variable, None)
 
 
 if __name__ == "__main__":
