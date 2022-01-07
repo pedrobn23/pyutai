@@ -112,6 +112,10 @@ class Tree:
                    cardinality=data.shape)
 
     @classmethod
+    def _prune(cls, node: Node):
+        node.children = [Tree._prune(node) for node in node.children]
+
+    @classmethod
     def _access(cls, node: Node, states: typing.Iterable) -> float:
         for var, state in enumerate(states):
             # If already restricted we choose restricted variable
