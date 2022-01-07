@@ -38,10 +38,6 @@ class Node(abc.ABC):
     def __repr__(self) -> str:
         pass
 
-    @abc.abstractmethod
-    def __deepcopy__(self, memo: dict):
-        pass
-
 
 class BranchNode(Node):
     """TODO"""
@@ -62,9 +58,6 @@ class BranchNode(Node):
     def __repr__(self) -> str:
         return f'{self.__class__!r}({self.name!r}, {self.children!r})'
 
-    def __deepcopy__(self, memo: dict) -> Node:
-        return type(self)(self.name, copy.deepcopy(self.children, memo))
-
 
 class LeafNode(Node):
     """TODO"""
@@ -79,9 +72,6 @@ class LeafNode(Node):
 
     def __repr__(self) -> str:
         return f'{self.__class__!r}({self.value!r})'
-
-    def __deepcopy__(self, memo: dict) -> Node:
-        return type(self)(copy.deepcopy(self.children, memo))
 
 
 # Deberiamos hacer la poda directamente?
