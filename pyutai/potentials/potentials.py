@@ -19,7 +19,7 @@ Typical usage example:
 
   # We can perform most of the operations over tree. For example:
   tree.prune()
-  tree.access([state_configuration])
+  tree.access([state_configuration()])
  """
 
 import abc
@@ -134,11 +134,12 @@ class Tree:
     annotations.
 
     Attributes:
-        attr1: Description of `attr1`.
-        attr2: Description of `attr2`.
+        root
+        n_variables
+        cardinality
+        restraints
 
     """
-
     root: Node
     n_variables: int
     cardinality: List[int] = dataclasses.field(default_factory=list)
