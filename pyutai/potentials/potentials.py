@@ -73,6 +73,9 @@ class BranchNode(Node):
             name (int): Name of the variable associated with the node. It should be non-negative.
             children (List[Node]): each of the node associated with each state of variable name.
                 It should be non-negative.
+        
+        Raises:
+            ValueError: Whenever name is negative of children is empty.
         """
         super().__init__()
 
