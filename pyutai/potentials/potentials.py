@@ -5,34 +5,46 @@ implemented. It is based on the impelmentations done in pgmpy.DiscreteFactor.
 
 Initially it will contains the classes:
 
-- Tree: Tree
-- TreePotential: A potential based on a tree structure.
-- TreeCPD: A conditional probability distribution based on TreePotential.
-           Analogous to pgmpy.TabularCPD.
+- Node: Abstract Base Class for Tree nodes
+- BranchNode: Class for non-terminal nodes. It contains a variable, as well as 
+    one child for each state of the variable.
+- LeafNode: Class for terminal nodes. It contains the associated value.
+- Tree: Wrapper class for a tree root node. It performs most of the operations.
 
-  Typical usage example:
+Typical usage example:
 
-  TODO
+  # data is read from a numpy ndarray object
+  data = np.array(get_data())
+  tree = Tree.from_array(data)
+  
+  # We can perform most of the operations over tree. For example:
+  tree.prune()
+  tree.access([state_configuration])
  """
 
 import abc
 import collections
 import copy
+import dataclasses
 
-from typing import List, Dict
+from typing import List, Dict, Iterable
 
 import numpy as np
 
 
 class Node(abc.ABC):
-    """TODO"""
+    """Abstract Base Class for potential tree nodes"""
 
-    def __init__(self, name: int):
+    def __init__(self):
         pass
 
     @abc.abstractmethod
     def is_terminal(self) -> bool:
-        """TODO"""
+        """is_terminal returns whether a given node is terminal.
+
+        Non-terminal nodes should have a children attribute. 
+        Terminal nodes should have a value attribute. 
+        """
 
     @abc.abstractmethod
     def __repr__(self) -> str:
@@ -40,7 +52,10 @@ class Node(abc.ABC):
 
 
 class BranchNode(Node):
-    """TODO"""
+    """BranchNode is a node that is not terminal.
+
+    A branch node is a node that has children. It is associated with
+    a variable, and has one child for every state such variable can be."""
 
     def __init__(self, name: int, children: List[Node]):
         super().__init__()
@@ -52,7 +67,7 @@ class BranchNode(Node):
         self.children = children
 
     def is_terminal(self) -> bool:
-        """TODO"""
+        """is_terminal returns False, as branch nodes are never terminal."""
         return False
 
     def __repr__(self) -> str:
@@ -60,14 +75,16 @@ class BranchNode(Node):
 
 
 class LeafNode(Node):
-    """TODO"""
+    """LeafNode is a node that is terminal.
 
-    def __init__(self, name: int, value: float):
+    A leaf node is a node that has no children. It only contains a value."""
+
+    def __init__(self, value: float):
         super().__init__()
         self.value = value
 
     def is_terminal(self) -> bool:
-        """TODO"""
+        """is_terminal returns True, as leaf nodes are always terminal."""
         return True
 
     def __repr__(self) -> str:
@@ -81,28 +98,28 @@ def _from_array(data: np.ndarray, assigned_vars: List[int]) -> Node:
     """TODO"""
 
     var = len(assigned_vars)  # Next variable to be assigned
-    cardinality = data.shape[var]
 
     # If every variable is already selected
     if len(data.shape) == var:
-        return LeafNode(var, data[tuple(assigned_vars)])
+        return LeafNode(data[tuple(assigned_vars)])
 
     else:
+        cardinality = data.shape[var]
         children = [
             _from_array(data, assigned_vars + [i]) for i in range(cardinality)
         ]
         return BranchNode(var, children)
 
 
-@dataclass
+@dataclasses.dataclass
 class Tree:
     """TODO"""
 
     root: Node
     n_variables: int
-    cardinality: List[int] = field(default_factory=list)
+    cardinality: List[int] = dataclasses.field(default_factory=list)
 
-    restraints: typing.Dict[int, int] = field(
+    restraints: Dict[int, int] = dataclasses.field(
         default_factory=collections.defaultdict, init=False)
 
     @classmethod
@@ -125,22 +142,21 @@ class Tree:
         pass
 
     @classmethod
-    def _access(cls, node: Node, states: typing.Iterable,
+    def _access(cls, node: Node, states: Iterable,
                 restraints: Dict[int, int]) -> float:
+
         for var, state in enumerate(states):
             index = restraints[var] if (var in restraints) else state
-
             if node.is_terminal():
-                return node.values[index]
+                return node.value
             else:
                 node = node.children[index]
 
+        return node.value
+
     # DUDA: Should I use variadic input instead
     # Obviar variables restrained no?
-    def access(self,
-               states: typing.List[int],
-               *,
-               ignore_restraints=False) -> float:
+    def access(self, states: List[int], *, ignore_restraints=False) -> float:
         """ TODO """
 
         if len(states) != self.n_variables:
@@ -183,5 +199,5 @@ if __name__ == "__main__":
     tree2 = Tree.from_array(array2)
     print(repr(tree1))
     print(repr(tree2))
-    tree1.access([0, 0])
-    tree2.access([1, 1, 1])
+    print(tree1.access([0, 0]))
+    print(tree2.access([1, 1, 1]))
