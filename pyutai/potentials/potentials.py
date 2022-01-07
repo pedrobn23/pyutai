@@ -94,11 +94,11 @@ def _from_array(data: np.ndarray, assigned_vars: typing.List[int]) -> Node:
         return BranchNode(var, children)
 
 
-@attr.s
+@dataclass
 class Tree:
-    root = attr.ib(type=Node)
-    n_variables = attr.ib(type=int)
-    cardinality = attr.ib(type=typing.Tuple[int])
+    root : Node
+    n_variables : int
+    cardinality Tupl;e
 
     restraint_vars = attr.ib(type=typing.Dict[int, int], init=False)
 
