@@ -1,48 +1,52 @@
 """Tree-based potentials structure in Python.
 
-This module contains the different implementations of potentials that are to be implemented. It is based on the impelmentations done in pgmpy.DiscreteFactor. Initially it will contains the classes:
-- Tree: Tree 
+This module contains the different implementations of potentials that are to be
+implemented. It is based on the impelmentations done in pgmpy.DiscreteFactor.
+
+Initially it will contains the classes:
+
+- Tree: Tree
 - TreePotential: A potential based on a tree structure.
-- TreeCPD: A conditional probability distribution based on TreePotential. Analogous to pgmpy.TabularCPD.
+- TreeCPD: A conditional probability distribution based on TreePotential.
+           Analogous to pgmpy.TabularCPD.
 
   Typical usage example:
 
   TODO
-"""
+ """
 
 import abc
-import attr
 import collections
 import copy
-import pprint
-import typing import List, Dict, Tuple
 
-import pandas as pd
+from typing import List, Dict
+
 import numpy as np
-import numpy.typing as npt
 
 
 class Node(abc.ABC):
+    """TODO"""
 
     def __init__(self, name: int):
         pass
-    
+
     @abc.abstractmethod
     def is_terminal(self) -> bool:
-        pass
+        """TODO"""
 
     @abc.abstractmethod
     def __repr__(self) -> str:
         pass
 
     @abc.abstractmethod
-    def __deepcopy__(self) -> Node:
+    def __deepcopy__(self, memo: dict):
         pass
 
 
 class BranchNode(Node):
+    """TODO"""
 
-    def __init__(self, name: int, children: typing.List[Node]):
+    def __init__(self, name: int, children: List[Node]):
         super().__init__()
 
         if name < 0:
@@ -52,35 +56,40 @@ class BranchNode(Node):
         self.children = children
 
     def is_terminal(self) -> bool:
+        """TODO"""
         return False
 
     def __repr__(self) -> str:
         return f'{self.__class__!r}({self.name!r}, {self.children!r})'
 
-    def __deepcopy__(self) -> Node:
-        return self.__cls__(self.name, copy.deepcopy(self.children))
+    def __deepcopy__(self, memo: dict) -> Node:
+        return type(self)(self.name, copy.deepcopy(self.children, memo))
 
 
 class LeafNode(Node):
+    """TODO"""
 
     def __init__(self, name: int, value: float):
         super().__init__()
         self.value = value
 
     def is_terminal(self) -> bool:
+        """TODO"""
         return True
 
     def __repr__(self) -> str:
         return f'{self.__class__!r}({self.value!r})'
 
-    def __deepcopy__(self) -> Node:
-        return self.__cls__(self.value)
+    def __deepcopy__(self, memo: dict) -> Node:
+        return type(self)(copy.deepcopy(self.children, memo))
 
 
 # Deberiamos hacer la poda directamente?
 # Usamos otra vez tail recursion. Puede ser un problema con
 # cantidades grandisimas de variables.
-def _from_array(data: np.ndarray, assigned_vars: typing.List[int]) -> Node:
+def _from_array(data: np.ndarray, assigned_vars: List[int]) -> Node:
+    """TODO"""
+
     var = len(assigned_vars)  # Next variable to be assigned
     cardinality = data.shape[var]
 
@@ -97,14 +106,18 @@ def _from_array(data: np.ndarray, assigned_vars: typing.List[int]) -> Node:
 
 @dataclass
 class Tree:
-    root : Node
-    n_variables : int
-    cardinality : List[int] = field(default_factory=list)
+    """TODO"""
 
-    restraints : typing.Dict[int, int] = field(default_factory=collections.defaultdict, init=False)
+    root: Node
+    n_variables: int
+    cardinality: List[int] = field(default_factory=list)
+
+    restraints: typing.Dict[int, int] = field(
+        default_factory=collections.defaultdict, init=False)
 
     @classmethod
     def from_array(cls, data: np.ndarray) -> Node:
+        """TODO"""
         if data.size == 0:
             raise ValueError('Array should be non-empty')
 
@@ -116,11 +129,14 @@ class Tree:
     # Suggestion: change it later.
     @classmethod
     def _prune(cls, node: Node):
+        """TODO"""
+
         #node.children = [Tree._prune(node) for node in node.children]
         pass
 
     @classmethod
-    def _access(cls, node: Node, states: typing.Iterable, restraints : Dict[int,int]) -> float:
+    def _access(cls, node: Node, states: typing.Iterable,
+                restraints: Dict[int, int]) -> float:
         for var, state in enumerate(states):
             index = restraints[var] if (var in restraints) else state
 
@@ -131,7 +147,11 @@ class Tree:
 
     # DUDA: Should I use variadic input instead
     # Obviar variables restrained no?
-    def access(self, states: typing.List[int], *, ignore_restraints = False) -> float:
+    def access(self,
+               states: typing.List[int],
+               *,
+               ignore_restraints=False) -> float:
+        """ TODO """
 
         if len(states) != self.n_variables:
             raise ValueError(f'Incorrect number of variables; ' +
@@ -142,15 +162,16 @@ class Tree:
                 raise ValueError(f'Value for variable {var} is out of bound;' +
                                  f'received: {value}, limit : {bound}.')
 
-        if self.restrained_variables and not ignore_restraints:
+        if self.restraints and not ignore_restraints:
             logging.warning(
-                f'variables {self.restrained_variables.keys} will be ignored as they are restrained.'
+                f'variables {self.restraints.keys} will be ignored as they are restrained.'
             )
             return Tree._access(self.root, states, self.restraints)
         else:
             return Tree._access(self.root, states, {})
 
     def restraint(self, variable: int, value: int):
+        """TODO"""
         if variable >= len(self.cardinality):
             raise ValueError(f'Invalid value {variable} for variable.')
 
@@ -161,6 +182,7 @@ class Tree:
         self.restraint_vars[variable] = state
 
     def unrestraint(self, variable: int):
+        """TODO"""
         self.restraint_vars.pop(variable, None)
 
 
