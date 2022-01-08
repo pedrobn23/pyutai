@@ -54,7 +54,13 @@ class TreeTestCase(unittest.TestCase):
         self._check_trees(self.arrays, self.trees)
 
     def test_prune(self):
-        pass
+        arr = np.array([[1, 6], [2, 2]])
+        tree = values.Tree.from_array(arr)
+        tree.prune()
+
+        pruned_repr = '''Tree(root=<class 'pyutai.values.BranchNode'>(0, [<class 'pyutai.values.BranchNode'>(1, [<class 'pyutai.values.LeafNode'>(1), <class 'pyutai.values.LeafNode'>(6)]), <class 'pyutai.values.LeafNode'>(2)]), cardinality=(2, 2), restraints={})'''
+
+        self.assertEqual(repr(tree), pruned_repr)
 
 
 if __name__ == '__main__':

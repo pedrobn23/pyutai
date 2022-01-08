@@ -75,7 +75,7 @@ class BranchNode(Node):
             name: Name of the variable associated with the node. It should be non-negative.
             children: Each of the nodes associated with each state of variable name.
                 It should be non-negative.
-        
+
         Raises:
             ValueError: Whenever name is negative of children is empty.
         """
@@ -144,8 +144,8 @@ class Tree:
     root: Node
     cardinality: List[int] = dataclasses.field(default_factory=list)
 
-    restraints: Dict[int, int] = dataclasses.field(
-        default_factory=collections.defaultdict, init=False)
+    restraints: Dict[int, int] = dataclasses.field(default_factory=dict,
+                                                   init=False)
 
     @classmethod
     def _from_array(cls, data: np.ndarray, assigned_vars: List[int]) -> Node:
@@ -172,7 +172,7 @@ class Tree:
 
         Read a potential from a given np.ndarray, and store it in a value tree.
         It does not returns a prune tree. Consider pruning the tree after creation.
-        Variables are named 0,...,len(data)-1, and as such will be refered for 
+        Variables are named 0,...,len(data)-1, and as such will be refered for
         operations like restricting and accessing.
 
         Args:
@@ -188,12 +188,26 @@ class Tree:
 
     # Consider that you are using tail recursion so it might overload with big files.
     # Suggestion: change it later.
+    # Should I do a hash-base module pruning?
     @classmethod
     def _prune(cls, node: Node):
-        """TODO"""
+        if node.is_terminal():
+            return node
+        else:
+            node.children = [Tree._prune(node) for node in node.children]
 
-        #node.children = [Tree._prune(node) for node in node.children]
-        pass
+            if all(child.is_terminal() for child in node.children):
+                if len(set(child.value for child in node.children)) == 1:
+                    return LeafNode(node.children[0].value)
+
+            return node
+
+    def prune(self):
+        """"Reduces the size of the tree by erasing duplicated branches.
+
+        Tail-recursion function that consider if two childs are equal, in
+        which case it unifies them under the same reference."""
+        self.root = Tree._prune(self.root)
 
     @classmethod
     def _access(cls, node: Node, states: Iterable,
@@ -217,20 +231,20 @@ class Tree:
         """Returns a value for a given series of states.
 
         Returns a value for a given state configuration. It receives either a
-        list or a tuple of states, with as many states as variables. 
-        
+        list or a tuple of states, with as many states as variables.
+
         In the case of retrained varaibles, via restraint method, those values
         are ignored unless ignore_restraints is set to True. If no variable is
         restrained, every value is considered.
 
-        In some case, specially in pruned tree, it is not necessary to state 
+        In some case, specially in pruned tree, it is not necessary to state
         the value of every variable to get the value. Nonetheless, for good
         measure, a complete set of states is required.
 
         Args:
             states: list or tuple of states for each variable.
             ignore_restraints: if set to true, restraints are ignored.
-        
+
         Raises:
             ValueError: if incorrect states are provided. In particular if:
                 * Incorrect number of state are provided.
@@ -257,13 +271,13 @@ class Tree:
     def restrain(self, variable: int, state: int):
         """retraint variable to a particular state.
 
-        Restraint a variable to a particular state. See access for more 
+        Restraint a variable to a particular state. See access for more
         information.
 
         Args:
-            variable: variable to be restrained. 
+            variable: variable to be restrained.
             state: state to restrain the variable with.
-        
+
         Raises:
             ValueError: if either variable or state are out of bound.
         """
@@ -281,8 +295,8 @@ class Tree:
         """unretraint variable.
 
         Args:
-            variable: variable to be unrestrained. 
-        
+            variable: variable to be unrestrained.
+
         Raises:
             ValueError: if variable is out of bound.
         """
