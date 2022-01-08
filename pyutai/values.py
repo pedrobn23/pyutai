@@ -167,7 +167,9 @@ class Tree:
 
     @classmethod
     def from_array(cls, data: np.ndarray) -> Node:
-        """ """
+        """Create a Tree from a numpy.ndarray.
+
+        """
         if data.size == 0:
             raise ValueError('Array should be non-empty')
 

@@ -28,10 +28,15 @@ class TreeTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             values.Tree.from_array(np.array([]))
 
-    def test_access(self):
-        for arr, tree in zip(self.arrays, self.trees):
+    def _check_trees(self, arrays, trees):
+        for arr, tree in zip(arrays, trees):
             for var in itertools.product(*[range(var) for var in arr.shape]):
                 self.assertEqual(arr[var], tree.access(var))
+
+    def test_access(self):
+        self._check_trees(self.arrays, self.trees)
+
+    def test_prun
 
 
 if __name__ == '__main__':
