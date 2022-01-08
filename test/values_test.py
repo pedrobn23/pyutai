@@ -18,8 +18,8 @@ class TreeTestCase(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.arrays = [
             np.array([1]),
-            np.array([[1, 1], [2, 2]]),
-            np.array([[[1, 1], [1, 7]], [[2, 34], [3, 23]]])
+            np.array([[1, 6], [2, 2]]),
+            np.array([[[1, 90876], [1, 7]], [[2, 34], [3, 23]]])
         ]
 
         self.trees = [values.Tree.from_array(arr) for arr in self.arrays]
@@ -36,7 +36,25 @@ class TreeTestCase(unittest.TestCase):
     def test_access(self):
         self._check_trees(self.arrays, self.trees)
 
-    def test_prun
+    def test_restraint(self):
+        for arr, tree in zip(self.arrays, self.trees):
+            if arr.shape[0] > 1:  # otherwise there is little to restrain
+                tree.restrain(0, 0)
+
+                state = [i - 1 for i in arr.shape]
+                restrained_state = [i - 1 for i in arr.shape]
+                restrained_state[0] = 0
+
+                self.assertEqual(arr[tuple(restrained_state)],
+                                 tree.access(state))
+
+                tree.unrestrain(0)
+
+        # to check that variables are properly unrestained
+        self._check_trees(self.arrays, self.trees)
+
+    def test_prune(self):
+        pass
 
 
 if __name__ == '__main__':

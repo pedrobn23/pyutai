@@ -26,6 +26,7 @@ import abc
 import collections
 import copy
 import dataclasses
+import logging
 
 from typing import Dict, Iterable, List, Tuple
 from pyutai import IndexType
@@ -71,8 +72,8 @@ class BranchNode(Node):
         checks that the variable is a non-negative value and assign
 
         Args:
-            name (int): Name of the variable associated with the node. It should be non-negative.
-            children (List[Node]): Each of the nodes associated with each state of variable name.
+            name: Name of the variable associated with the node. It should be non-negative.
+            children: Each of the nodes associated with each state of variable name.
                 It should be non-negative.
         
         Raises:
@@ -111,7 +112,7 @@ class LeafNode(Node):
         """Initializes LeafNode.
 
         Args:
-            value (float): value to be stored.
+            value: value to be stored.
          """
         super().__init__()
         self.value = value
@@ -169,6 +170,16 @@ class Tree:
     def from_array(cls, data: np.ndarray) -> Node:
         """Create a Tree from a numpy.ndarray.
 
+        Read a potential from a given np.ndarray, and store it in a value tree.
+        It does not returns a prune tree. Consider pruning the tree after creation.
+        Variables are named 0,...,len(data)-1, and as such will be refered for 
+        operations like restricting and accessing.
+
+        Args:
+            data: table-valued potential.
+
+        Raises:
+            ValueError: is provided with an empty table.
         """
         if data.size == 0:
             raise ValueError('Array should be non-empty')
@@ -199,37 +210,83 @@ class Tree:
 
     # DUDA: Should I use variadic input instead
     # Obviar variables restrained no?
-    def access(self, states: IndexType, *, ignore_restraints=False) -> float:
-        """ TODO """
+    def access(self,
+               states: IndexType,
+               *,
+               ignore_restraints: bool = False) -> float:
+        """Returns a value for a given series of states.
+
+        Returns a value for a given state configuration. It receives either a
+        list or a tuple of states, with as many states as variables. 
+        
+        In the case of retrained varaibles, via restraint method, those values
+        are ignored unless ignore_restraints is set to True. If no variable is
+        restrained, every value is considered.
+
+        In some case, specially in pruned tree, it is not necessary to state 
+        the value of every variable to get the value. Nonetheless, for good
+        measure, a complete set of states is required.
+
+        Args:
+            states: list or tuple of states for each variable.
+            ignore_restraints: if set to true, restraints are ignored.
+        
+        Raises:
+            ValueError: if incorrect states are provided. In particular if:
+                * Incorrect number of state are provided.
+                * An state is out of bound for its variable.
+        """
 
         if len(states) != (n_variables := len(self.cardinality)):
-            raise ValueError(f'Incorrect number of variables; ' +
-                             f'expected: {n_variables}, received {len(states)}')
+            raise ValueError(f'Incorrect number of variables; expected: ' +
+                             f'{n_variables}, received: {len(states)}.')
 
-        for var, (value, bound) in enumerate(zip(states, self.cardinality)):
-            if value >= bound:
-                raise ValueError(f'Value for variable {var} is out of bound;' +
-                                 f'received: {value}, limit : {bound}.')
+        for var, (state, bound) in enumerate(zip(states, self.cardinality)):
+            if state >= bound or state < 0:
+                raise ValueError(f'State for variable {var} is out of bound;' +
+                                 f'expected state in interval:[0,{bound}),' +
+                                 f'received: {state}.')
 
         if self.restraints and not ignore_restraints:
-            logging.warning(
-                f'variables {self.restraints.keys} will be ignored as they are restrained.'
-            )
+            logging.warning(f'variables {list(self.restraints.keys())}' +
+                            f'will be ignored as they are restrained.')
             return Tree._access(self.root, states, self.restraints)
         else:
             return Tree._access(self.root, states, {})
 
-    def restraint(self, variable: int, value: int):
-        """TODO"""
-        if variable >= len(self.cardinality):
+    def restrain(self, variable: int, state: int):
+        """retraint variable to a particular state.
+
+        Restraint a variable to a particular state. See access for more 
+        information.
+
+        Args:
+            variable: variable to be restrained. 
+            state: state to restrain the variable with.
+        
+        Raises:
+            ValueError: if either variable or state are out of bound.
+        """
+        if variable >= len(self.cardinality) or variable < 0:
             raise ValueError(f'Invalid value {variable} for variable.')
 
-        if value >= (bound := self.cardinality[variable]):
-            raise ValueError(f'Value for variable {variable} is out of bound;' +
-                             f'received: {value}, limit : {bound}.')
+        if state >= (bound := self.cardinality[variable]):
+            raise ValueError(f'State for variable {varriable} is ' +
+                             f'out of bound; expected state in ' +
+                             f'interval:[0,{bound}),received: {state}.')
 
-        self.restraint_vars[variable] = state
+        self.restraints[variable] = state
 
-    def unrestraint(self, variable: int):
-        """TODO"""
-        self.restraint_vars.pop(variable, None)
+    def unrestrain(self, variable: int):
+        """unretraint variable.
+
+        Args:
+            variable: variable to be unrestrained. 
+        
+        Raises:
+            ValueError: if variable is out of bound.
+        """
+        if variable >= len(self.cardinality) or variable < 0:
+            raise ValueError(f'Invalid value {variable} for variable.')
+
+        self.restraints.pop(variable, None)
