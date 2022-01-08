@@ -52,7 +52,7 @@ class Node(abc.ABC):
 
 
 class BranchNode(Node):
-    """BranchNode is a node is a node that has children.
+    """BranchNode is a node that has children.
 
     A branch node is characterized by not being terminal. As we deal
     with value-tree, each branch node has to be associated with a
@@ -71,7 +71,7 @@ class BranchNode(Node):
 
         Args:
             name (int): Name of the variable associated with the node. It should be non-negative.
-            children (List[Node]): each of the node associated with each state of variable name.
+            children (List[Node]): Each of the nodes associated with each state of variable name.
                 It should be non-negative.
         
         Raises:
@@ -134,14 +134,12 @@ class Tree:
     annotations.
 
     Attributes:
-        root
-        n_variables
-        cardinality
-        restraints
+        root: root node of the tree.
+        cardinality: number of states of each variable.
+        restraints: restrained variables in the tree.
 
     """
     root: Node
-    n_variables: int
     cardinality: List[int] = dataclasses.field(default_factory=list)
 
     restraints: Dict[int, int] = dataclasses.field(
@@ -149,7 +147,7 @@ class Tree:
 
     @classmethod
     def _from_array(cls, data: np.ndarray, assigned_vars: List[int]) -> Node:
-        """Used as auxiliar for tail recursion in from_array method.
+        """Auxiliar function for tail recursion in from_array method.
 
         As it uses tail recursion, it may generate stack overflow for big trees."""
         var = len(assigned_vars)  # Next variable to be assigned
@@ -203,7 +201,7 @@ class Tree:
     def access(self, states: List[int], *, ignore_restraints=False) -> float:
         """ TODO """
 
-        if len(states) != self.n_variables:
+        if len(states) != (n_variables := len(self.cardinality)):
             raise ValueError(f'Incorrect number of variables; ' +
                              f'expected: {n_variables}, received {len(states)}')
 
@@ -234,14 +232,3 @@ class Tree:
     def unrestraint(self, variable: int):
         """TODO"""
         self.restraint_vars.pop(variable, None)
-
-
-if __name__ == "__main__":
-    array1 = np.array([[1, 1], [2, 2]])
-    array2 = np.array([[[1, 1], [1, 7]], [[2, 34], [3, 23]]])
-    tree1 = Tree.from_array(array1)
-    tree2 = Tree.from_array(array2)
-    print(repr(tree1))
-    print(repr(tree2))
-    print(tree1.access([0, 0]))
-    print(tree2.access([1, 1, 1]))
