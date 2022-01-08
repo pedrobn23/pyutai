@@ -2,15 +2,16 @@
 Module that implements automatic test cases for TreePotential class.
 """
 
+import itertools
 import unittest
 import numpy as np
 
-from pyutai.values import Tree
+from pyutai import values
 
 
 class TreeTestCase(unittest.TestCase):
     """
-    Test Class for TreePotential class.
+    Test Class for values.Tree class.
     """
 
     def __init__(self, *args, **kwargs):
@@ -23,10 +24,14 @@ class TreeTestCase(unittest.TestCase):
 
         self.trees = [values.Tree.from_array(arr) for arr in self.arrays]
 
-    def test_from_array(self):
+    def test_execptions_from_array(self):
+        with self.assertRaises(ValueError):
+            values.Tree.from_array(np.array([]))
 
-        with self.assertRaise(ValueError):
-            Tree.from_array(np.array([]))
+    def test_access(self):
+        for arr, tree in zip(self.arrays, self.trees):
+            for var in itertools.product(*[range(var) for var in arr.shape]):
+                self.assertEqual(arr[var], tree.access(var))
 
 
 if __name__ == '__main__':
