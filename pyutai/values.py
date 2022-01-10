@@ -52,7 +52,17 @@ class Node(abc.ABC):
     def __repr__(self) -> str:
         pass
 
+    @abc.abstractmethod
+    def __eq__(self, other):
+        pass
 
+    # have to include memo
+    @abc.abstractmethod
+    def __deepcopy__(self, memo):
+        pass
+
+
+# should I make hashing nodes.
 class BranchNode(Node):
     """BranchNode is a node that has children.
 
@@ -95,7 +105,15 @@ class BranchNode(Node):
         return False
 
     def __repr__(self) -> str:
-        return f'{self.__class__!r}({self.name!r}, {self.children!r})'
+        return f'{self.__class__}({self.name!r}, {self.children!r})'
+
+    def __eq__(self, other: Node):
+        if not other.is_terminal():
+            if len(other.children) == len(self.children):
+                return all(
+                    a == b for a, b in zip(self.children, other.children))
+
+        return False
 
 
 class LeafNode(Node):
@@ -122,7 +140,13 @@ class LeafNode(Node):
         return True
 
     def __repr__(self) -> str:
-        return f'{self.__class__!r}({self.value!r})'
+        return f'{self.__class__}({self.value!r})'
+
+    def __eq__(self, other: Node):
+        if other.is_terminal():
+            return self.value == other.value
+
+        return False
 
 
 @dataclasses.dataclass
@@ -262,7 +286,7 @@ class Tree:
                                  f'received: {state}.')
 
         if self.restraints and not ignore_restraints:
-            logging.warning(f'variables {list(self.restraints.keys())}' +
+            logging.warning(f'variables {list(self.restraints.keys())} ' +
                             f'will be ignored as they are restrained.')
             return Tree._access(self.root, states, self.restraints)
         else:
@@ -304,3 +328,14 @@ class Tree:
             raise ValueError(f'Invalid value {variable} for variable.')
 
         self.restraints.pop(variable, None)
+
+    # mismo problema, podemos modular el access para que haga unas sumas
+    # o podemos devolver otro arbol con una variable menos.
+    def marginalize(self, variable: int):
+        pass
+
+    def sum(self, other: Tree):
+        pass
+
+    def product(self, other: Tree):
+        pass
