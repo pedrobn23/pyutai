@@ -1,15 +1,9 @@
 """Tree-based potentials structure in Python.
 
 This module contains the different implementations of potentials that are to be
-implemented. It is based on the impelmentations done in pgmpy.DiscreteFactor.
+implemented. It is based on the implementations done in pgmpy.DiscreteFactor.
 
-Initially it will contains the classes:
-
-- Node: Abstract Base Class for Tree nodes
-- BranchNode: Class for non-terminal nodes. It contains a variable, as well as
-    one child for each state of the variable.
-- LeafNode: Class for terminal nodes. It contains the associated value.
-- Tree: Wrapper class for a tree root node. It performs most of the operations.
+Initially it will contains the class Tree, that is a wrapper class for a tree root node. It performs most of the operations.
 
 Typical usage example:
 
@@ -33,121 +27,10 @@ from pyutai import IndexType
 
 import numpy as np
 
-
-class Node(abc.ABC):
-    """Abstract Base Class for potential Value-Tree nodes"""
-
-    def __init__(self):
-        pass
-
-    @abc.abstractmethod
-    def is_terminal(self) -> bool:
-        """is_terminal returns whether a given node is terminal.
-
-        Non-terminal nodes should have a children attribute.
-        Terminal nodes should have a value attribute.
-        """
-
-    @abc.abstractmethod
-    def __repr__(self) -> str:
-        pass
-
-    @abc.abstractmethod
-    def __eq__(self, other):
-        pass
-
-    # have to include memo
-    @abc.abstractmethod
-    def __deepcopy__(self, memo):
-        pass
-
-
-# should I make hashing nodes.
-class BranchNode(Node):
-    """BranchNode is a node that has children.
-
-    A branch node is characterized by not being terminal. As we deal
-    with value-tree, each branch node has to be associated with a
-    variable, and have a children for every state possible for the
-    variable.
-
-    Attributes:
-        name (int): Name of the variable associated with the node.
-        children (List[Node]): each of the node associated with each state of variable name.
-    """
-
-    def __init__(self, name: int, children: List[Node]):
-        """Initializes BranchNode
-
-        checks that the variable is a non-negative value and assign
-
-        Args:
-            name: Name of the variable associated with the node. It should be non-negative.
-            children: Each of the nodes associated with each state of variable name.
-                It should be non-negative.
-
-        Raises:
-            ValueError: Whenever name is negative of children is empty.
-        """
-        super().__init__()
-
-        if name < 0:
-            raise ValueError(f'Name must be non-negative, got: {name}')
-        if not children:
-            raise ValueError(
-                f'Children must be a non-empty list, got: {children}')
-
-        self.name = name
-        self.children = children
-
-    def is_terminal(self) -> bool:
-        """is_terminal returns False, as branch nodes are never terminal."""
-        return False
-
-    def __repr__(self) -> str:
-        return f'{self.__class__}({self.name!r}, {self.children!r})'
-
-    def __eq__(self, other: Node):
-        if not other.is_terminal():
-            if len(other.children) == len(self.children):
-                return all(
-                    a == b for a, b in zip(self.children, other.children))
-
-        return False
-
-
-class LeafNode(Node):
-    """LeafNode is a node that store a value.
-
-    A leaf node is a node that store a value. It has no children and thus it is not terminal.
-    It only contains a value.
-
-    Attributes:
-        value (float): value of the node.
-    """
-
-    def __init__(self, value: float):
-        """Initializes LeafNode.
-
-        Args:
-            value: value to be stored.
-         """
-        super().__init__()
-        self.value = value
-
-    def is_terminal(self) -> bool:
-        """is_terminal returns True, as leaf nodes are always terminal."""
-        return True
-
-    def __repr__(self) -> str:
-        return f'{self.__class__}({self.value!r})'
-
-    def __eq__(self, other: Node):
-        if other.is_terminal():
-            return self.value == other.value
-
-        return False
-
+@dataclasses.dataclass
+class Element:
+    states  : Tuple[int]
+    value : float
 
 @dataclasses.dataclass
 class Tree:
@@ -213,8 +96,8 @@ class Tree:
     # Consider that you are using tail recursion so it might overload with big files.
     # Suggestion: change it later.
     # Should I do a hash-base module pruning?
-    @classmethod
-    def _prune(cls, node: Node):
+    @staticmethod
+    def _value_prune(node: Node):
         if node.is_terminal():
             return node
         else:
@@ -224,14 +107,14 @@ class Tree:
                 if len(set(child.value for child in node.children)) == 1:
                     return LeafNode(node.children[0].value)
 
-            return node
-
+            return node        
+    
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches.
 
         Tail-recursion function that consider if two childs are equal, in
         which case it unifies them under the same reference."""
-        self.root = Tree._prune(self.root)
+        self.root = Tree._value_prune(self.root)
 
     @classmethod
     def _access(cls, node: Node, states: Iterable,
@@ -329,6 +212,27 @@ class Tree:
 
         self.restraints.pop(variable, None)
 
+
+    def __iter__(self):
+        """Returns an iterator over the values of the Tree.
+
+        Returns:
+            Element: with the configuration of states variables and the associated value.
+        """
+        for var in itertools.product(*[range(var) for var in arr.shape]):
+            raise Element(var, self.access(var))
+
+    def size(self):
+        return self.root.size()
+
+    
+    def SQEuclideanDistance(self, other : Tree):
+        return sum((a.value - b.value)**2 for a,b in zip(self, other))
+        
+    def KullbackDistance(self, other : Tree):
+        return sum((a.value * (np.log(a.value - b.vlaue)) for a,b in zip(self, other))
+
+    
     # mismo problema, podemos modular el access para que haga unas sumas
     # o podemos devolver otro arbol con una variable menos.
     def marginalize(self, variable: int):

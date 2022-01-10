@@ -68,8 +68,8 @@ class TreeTestCase(unittest.TestCase):
 
     def _check_trees(self, arrays, trees):
         for arr, tree in zip(arrays, trees):
-            for var in itertools.product(*[range(var) for var in arr.shape]):
-                self.assertEqual(arr[var], tree.access(var))
+            for states, value in tree:
+                self.assertEqual(arr[states], value)
 
     def test_access(self):
         self._check_trees(self.arrays, self.trees)
