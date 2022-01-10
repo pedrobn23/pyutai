@@ -8,8 +8,19 @@ from pgmpy import readwrite
 from pgmpy import models
 
 
-def is_bayesian(path: str) -> bool:
+def _is_bayesian(path: str) -> bool:
+    """Check if a .uai network is bayesian.
 
+    A .uai network can be bayesian o markovian. This method
+    check whether the network is bayesian.
+
+    Args:
+        path: path to the file to he open.
+    
+    Raises:
+        OSError: if there is any problem opening the file in 
+            the provided path.
+    """
     try:
         net_file = open(path, 'rb')
 
@@ -18,8 +29,7 @@ def is_bayesian(path: str) -> bool:
         ret = net_type == b'BAYES'
 
     except OSError as ose:
-        raise ValueError(
-            f'Error ocurred reading network file {path!r}') from ose
+        raise OSError(f'Error ocurred reading network file {path!r}') from ose
 
     finally:
         net_file.close()
@@ -28,9 +38,25 @@ def is_bayesian(path: str) -> bool:
 
 
 def read(path: str) -> models.BayesianNetwork:
+    """
+    Read a bayesian network from a file.
+
+    Read method uses pgmpy to read a bayesian network from either
+    BIF file or UAI file.
+
+    Args:
+        path: path to the file to he open.
+
+    Raises:
+        OSError: if there is any problem opening the file in 
+            the provided path.
+        ValueError: if file provided is not supported by read.
+
+    """
+
     try:
         if path.endswith(".uai"):
-            if not is_bayesian(path):
+            if not _is_bayesian(path):
                 raise ValueError(f'network in {path!r} is not BAYES.' +
                                  f' Only networks of type BAYES are allowed.')
 
@@ -43,36 +69,6 @@ def read(path: str) -> models.BayesianNetwork:
                 f'File extension for path {path!r} is not supported.')
 
     except OSError as ose:
-        raise ValueError(
-            f'Error ocurred reading network file {path!r}') from ose
+        raise OSError(f'Error ocurred reading network file {path!r}') from ose
 
     return reader
-
-
-def classify_networks(path: str):
-    nets = collections.defaultdict(list)
-
-    for network in os.listdir(path):
-        if network.endswith(".uai"):
-            with open(fullpath := os.path.join(path, network)) as net_file:
-                # the first line in a UAI file contains type
-                net_type = net_file.readline().strip()
-
-                nets[net_type].append(fullpath)
-    return nets
-
-
-if __name__ == "__main__":
-    #path = '../../networks/BN_58.uai'
-    path = '../../networks/asia.bif'
-
-    try:
-        reader = read(path)
-        model = reader.get_model()
-
-        for cpd in model.get_cpds():
-            print(cpd)
-            print(type(cpd.values))
-            print(cpd.values.shape)
-    except:
-        logging.exception('msg')
