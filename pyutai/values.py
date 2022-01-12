@@ -74,7 +74,7 @@ class Tree:
             return BranchNode(var, children)
 
     @classmethod
-    def from_array(cls, data: np.ndarray) -> Node:
+    def from_array(cls, data: np.ndarray) -> Tree:
         """Create a Tree from a numpy.ndarray.
 
         Read a potential from a given np.ndarray, and store it in a value tree.
@@ -93,6 +93,47 @@ class Tree:
 
         return cls(root=Tree._from_array(data, []), cardinality=data.shape)
 
+   @classmethod
+    def _from_callable(cls, data : callable, assigned_vars: List[int]) -> Node:
+        """Auxiliar function for tail recursion in from_array method.
+
+        As it uses tail recursion, it may generate stack overflow for big trees."""
+        var = len(assigned_vars)  # Next variable to be assigned
+
+        # If every variable is already selected
+        if len(data.shape) == var:
+            return LeafNode(data(tuple(assigned_vars)))
+
+        else:
+            cardinality = data.shape[var]
+            children = [
+                Tree._from_array(data, assigned_vars + [i])
+                for i in range(cardinality)
+            ]
+            return BranchNode(var, children)
+
+    @classmethod
+    def from_callable(cls, data : callable) -> Tree:
+        """Create a Tree from a numpy.ndarray.
+
+        Read a potential from a given np.ndarray, and store it in a value tree.
+        It does not returns a prune tree. Consider pruning the tree after creation.
+        Variables are named 0,...,len(data)-1, and as such will be refered for
+        operations like restricting and accessing.
+
+        Args:
+            data: table-valued potential.
+
+        Raises:
+            ValueError: is provided with an empty table.
+        """
+        if data.size == 0:
+            raise ValueError('Array should be non-empty')
+
+        return cls(root=Tree._from_callable( data, []), cardinality=data.shape)
+        
+
+    
     # Consider that you are using tail recursion so it might overload with big files.
     # Suggestion: change it later.
     # Should I do a hash-base module pruning?
