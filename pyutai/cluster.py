@@ -8,7 +8,7 @@ from typing import Dict, Tuple
 class ClusterPotential:
     clusters :  Dict[int, set] = dataclasses.field(default_factory=collections.defaultdict(set))
     cardinality : Tuple[int] = None
-
+    
     def access(indexes : Tuple[int]) -> float:
         for value, index_set in self.clusters:
             if indexes in index_set:
@@ -19,11 +19,17 @@ class ClusterPotential:
         self.cardinality = arr.shape
         for index, value in np.ndenumerate(array):
             self.cluster[value].append(index)
-            self.values[index] = value
-
+            
     def reduce_cluster(self, goal):
-
-        D = [0]*
+        n_elements = np.prod(self.cardinality)
+        
+        if goal >= len(self.cluster):
+            return self
+        
+        D = [[0]*goal]*n_elements]
+        for i in range(1, n_elements):
+            for m in range(1, goals):
+                D[i][m] = min(D[i-1][j-1]
         
 if __name__ == '__main__':
     clusters = {0.3 : {1,2,3}, 0.25 : {4,5}, 0.2 : {6,7,8,0}}
