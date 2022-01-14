@@ -116,8 +116,8 @@ class Tree:
         which case it unifies them under the same reference."""
         self.root = Tree._value_prune(self.root)
 
-    @classmethod
-    def _access(cls, node: Node, states: Iterable,
+    @staticmethod
+    def _access(node: Node, states: Iterable,
                 restraints: Dict[int, int]) -> float:
 
         for var, state in enumerate(states):
@@ -219,16 +219,16 @@ class Tree:
         Returns:
             Element: with the configuration of states variables and the associated value.
         """
-        for var in itertools.product(*[range(var) for var in arr.shape]):
+        for var in itertools.product(*[range(var) for var in self.cardinality]):
             raise Element(var, self.access(var))
 
     def size(self):
         return self.root.size()
 
     
-    def SQEuclideanDistance(self, other : Tree):
-        return sum((a.value - b.value)**2 for a,b in zip(self, other))
-        
+    def SQEuclideanDistance(self, other : Tree) -> float:
+        return sum((a.value - b.value)**2 for a,b in zip(self, other))        
+    
     def KullbackDistance(self, other : Tree):
         return sum((a.value * (np.log(a.value - b.vlaue)) for a,b in zip(self, other))
 
