@@ -1,0 +1,12 @@
+import logging
+
+from pgmpy import readwrite
+
+if __name__ == "__main__":
+    try:
+
+        reader = UAIReader(path='BN_.uai')
+    except OSError:
+        logging.exception("message")
+
+    print(reader)
