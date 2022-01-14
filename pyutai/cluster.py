@@ -8,13 +8,12 @@ from typing import Dict, Tuple
 class ClusterPotential:
     clusters :  Dict[int, set] = dataclasses.field(default_factory=collections.defaultdict(set))
     cardinality : Tuple[int] = None
-    
-    def access(indexes : Tuple[int]) -> float:
+
+    def access(self, indexes : Tuple[int]) -> float:
         for value, index_set in self.clusters:
             if indexes in index_set:
                 return value
 
-    
     @classmethod
     def from_array(cls, array : np.ndarray):
         self.cardinality = arr.shape
@@ -31,11 +30,13 @@ class ClusterPotential:
         
         if goal >= len(self.cluster):
             return self
+
+        distance 
         
         D = [[0]*goal]*n_elements]
         for i in range(1, n_elements):
             for m in range(1, goals):
-                D[i][m] = min(D[i-1][j-1]
+                D[i][m] = min(D[i-1][j-1])
 
         
 if __name__ == '__main__':
