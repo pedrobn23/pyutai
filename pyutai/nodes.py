@@ -118,15 +118,13 @@ class BranchNode(Node):
         return False
 
     # have to include memo
-    @abc.abstractmethod
     def __deepcopy__(self, memo):
         return type(self)(self.name, copy.deepcopy(self.children))
 
     # deberíamos memorizarla?
-    @abc.abstractmethod
     def size(self):
         """size is the number of nodes that lives under the root."""
-        return sum(child.size() for child in self.children)
+        return sum(child.size() for child in self.children) + 1
 
 
 class LeafNode(Node):
@@ -162,11 +160,9 @@ class LeafNode(Node):
         return False
 
     # have to include memo
-    @abc.abstractmethod
     def __deepcopy__(self, memo):
         return type(self)(self.value)
 
-    @abc.abstractmethod
     def size(self):
         """size is the number of nodes that lives under the root."""
         return 1

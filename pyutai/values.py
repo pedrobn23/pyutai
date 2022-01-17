@@ -24,20 +24,19 @@ import dataclasses
 import logging
 import sys
 
-
 from pyutai import nodes
 from typing import Callable, Dict, Iterable, List, Tuple
 
-
 import numpy as np
+
 
 @dataclasses.dataclass
 class Element:
     """
     An element is a pair of a state of the variables of a potential, and the 
     """
-    states  : Tuple[int]
-    value : float
+    states: Tuple[int]
+    value: float
 
 
 # Union types are only allowed from python 3.10 onwards [1].
@@ -65,13 +64,12 @@ string representing a number.
 """
 
 
-
-def _tuple_from_dict(data : Dict[str, int]):
+def _tuple_from_dict(data: Dict[str, int]):
     """Helper function to create a tuple from a dictionary of 
     assigned vars. If the dictionary can not be converted to a 
     tuple it will raise IndexError."""
-    return tuple([data[str(i)] for i, _ in enumerate(data.keys)])
-        
+    return tuple([data[str(i)] for i, _ in enumerate(data.keys())])
+
 
 @dataclasses.dataclass
 class Tree:
@@ -91,9 +89,13 @@ class Tree:
                                                    init=False)
 
     @classmethod
-    def _from_callable(cls, data : DataAccessor, data_shape : List[int],
-                       assigned_vars: Dict[int, int], *,
-                       next_var : VarSelector = None) -> nodes.Node:
+    def _from_callable(cls,
+                       data: DataAccessor,
+                       data_shape: List[int],
+                       assigned_vars: Dict[int, int],
+                       h=0,
+                       *,
+                       next_var: VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_array method.
 
         As it uses tail recursion, it may generate stack overflow for big trees.
@@ -101,23 +103,29 @@ class Tree:
         due to the immutability of tuples."""
         if next_var is None:
             next_var = len
-        
+
         # If every variable is already selected
         if len(data_shape) == len(assigned_vars):
-            return LeafNode(data(_tuple_from_dict(assigned_vars)))
+            return nodes.LeafNode(data(_tuple_from_dict(assigned_vars)))
 
         else:
             var = next_var(assigned_vars)
             cardinality = data_shape[var]
             # produced dict have str keys
             children = [
-                Tree._from_callable(data,  data_shape, dict(assigned_vars, var=i))
+                Tree._from_callable(data, data_shape,
+                                    dict(assigned_vars, **{str(var): i}), h + 1)
                 for i in range(cardinality)
             ]
-            return BranchNode(var, children)
+
+            return nodes.BranchNode(var, children)
 
     @classmethod
-    def from_callable(cls, data : DataAccessor, data_shape : Tuple[int], *, next_var : Callable[[Dict[int, int]], int] = None):
+    def from_callable(cls,
+                      data: DataAccessor,
+                      data_shape: Tuple[int],
+                      *,
+                      next_var: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a callable.
 
         Read a potential from a given callable, and store it in a value tree.
@@ -134,8 +142,11 @@ class Tree:
                   the next variables to be assigned. If not specified, variables are
                   are assigned in increasing order.
         """
-        return cls(root=Tree._from_callable(data=data, data_shape = data_shape, assigned_vars={}), data_shape=list(data_shape))
-        
+        return cls(root=Tree._from_callable(data=data,
+                                            data_shape=data_shape,
+                                            assigned_vars={}),
+                   cardinality=list(data_shape))
+
     @classmethod
     def from_array(cls, data: np.ndarray):
         """Create a Tree from a numpy.ndarray.
@@ -156,10 +167,9 @@ class Tree:
 
         return cls.from_callable(data.item, data.shape)
 
-    
     # Consider that you are using tail recursion so it might overload with big files.
     @staticmethod
-    def _value_prune(node:nodes.Node):
+    def _value_prune(node: nodes.Node):
         if node.is_terminal():
             return node
         else:
@@ -169,8 +179,8 @@ class Tree:
                 if len(set(child.value for child in node.children)) == 1:
                     return LeafNode(node.children[0].value)
 
-            return node        
-    
+            return node
+
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches.
 
@@ -179,7 +189,7 @@ class Tree:
         self.root = Tree._value_prune(self.root)
 
     @staticmethod
-    def _access(node:nodes.Node, states: List[int],
+    def _access(node: nodes.Node, states: List[int],
                 restraints: Dict[int, int]) -> float:
 
         while not node.is_terminal():
@@ -270,7 +280,6 @@ class Tree:
 
         self.restraints.pop(variable, None)
 
-
     def __iter__(self):
         """Returns an iterator over the values of the Tree.
 
@@ -283,19 +292,18 @@ class Tree:
     def size(self):
         return self.root.size()
 
-    def SQEuclideanDistance(self, other : Tree) -> float:
-        return sum((a.value - b.value)**2 for a,b in zip(self, other))        
-    
-    def KullbackDistance(self, other : Tree):
-        return sum((a.value * (np.log(a.value - b.value))
-                    for a,b in zip(self, other)) )
+    def SQEuclideanDistance(self, other: Tree) -> float:
+        return sum((a.value - b.value)**2 for a, b in zip(self, other))
 
+    def KullbackDistance(self, other: Tree):
+        return sum((
+            a.value * (np.log(a.value - b.value)) for a, b in zip(self, other)))
 
     @staticmethod
     def _marginalize(node, variable) -> node:
         pass
-                   
-    def marginalize(self, variable: int, *, inplace : bool = False):
+
+    def marginalize(self, variable: int, *, inplace: bool = False):
         pass
 
     def sum(self, other: Tree):

@@ -6,7 +6,7 @@ import itertools
 import unittest
 import numpy as np
 
-from pyutai import values
+from pyutai import values, nodes
 
 
 class NodesTestCase(unittest.TestCase):
@@ -26,7 +26,7 @@ class NodesTestCase(unittest.TestCase):
         ]
 
         self.n_leaf_nodes = 5
-        self.leaf_nodes = [values.LeafNode(i) for i in range(self.n_leaf_nodes)]
+        self.leaf_nodes = [nodes.LeafNode(i) for i in range(self.n_leaf_nodes)]
 
         self.all_nodes = self.branch_nodes + self.leaf_nodes
 
@@ -37,9 +37,7 @@ class NodesTestCase(unittest.TestCase):
         for nodeA, nodeB in zip(self.branch_nodes, other_branch_nodes):
             self.assertEqual(nodeA, nodeB)
 
-        other_leaf_nodes = [
-            values.LeafNode(i) for i in range(self.n_leaf_nodes)
-        ]
+        other_leaf_nodes = [nodes.LeafNode(i) for i in range(self.n_leaf_nodes)]
         for nodeA, nodeB in zip(self.leaf_nodes, other_leaf_nodes):
             self.assertEqual(nodeA, nodeB)
 
