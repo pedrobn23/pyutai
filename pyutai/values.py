@@ -15,6 +15,7 @@ Typical usage example:
   tree.prune()
   tree.access([state_configuration()])
  """
+from __future__ import annotations
 
 import abc
 import collections
@@ -23,8 +24,10 @@ import dataclasses
 import logging
 import sys
 
-from typing import Dict, Iterable, List, Tuple
+
 from pyutai import nodes
+from typing import Callable, Dict, Iterable, List, Tuple
+
 
 import numpy as np
 
@@ -48,14 +51,27 @@ if sys.version_info.major >= 3 and sys.version_info.major >= 10:
 else:
     IndexType = Tuple[int]
 
-DataAccessor = callable[[Tuple[int]], int]
+DataAccessor = Callable[[Tuple[int]], int]
 """DataAccesor is the type of the functions that, from a state configuration of
 a set of variables, retrieves the associated value"""
 
-VarSelector = callable[[Dict[int, int]], int]
+VarSelector = Callable[[Dict[str, int]], int]
 """VarSelector is the type of the functions that select which variable to explore
 next at the tree creation. It receives a  Dictionary with the variables that have
- already been assigned and select the next variable to explore."""
+ already been assigned and select the next variable to explore.
+
+As dict are optimized for lookup, an str to int dict will be passed, with every 
+string representing a number.
+"""
+
+
+
+def _tuple_from_dict(data : Dict[str, int]):
+    """Helper function to create a tuple from a dictionary of 
+    assigned vars. If the dictionary can not be converted to a 
+    tuple it will raise IndexError."""
+    return tuple([data[str(i)] for i, _ in enumerate(data.keys)])
+        
 
 @dataclasses.dataclass
 class Tree:
@@ -69,16 +85,15 @@ class Tree:
         cardinality: number of states of each variable.
         restraints: restrained variables in the tree.
     """
-    root: Node
+    root: nodes.Node
     cardinality: List[int] = dataclasses.field(default_factory=list)
-
     restraints: Dict[int, int] = dataclasses.field(default_factory=dict,
                                                    init=False)
 
-   @classmethod
+    @classmethod
     def _from_callable(cls, data : DataAccessor, data_shape : List[int],
                        assigned_vars: Dict[int, int], *,
-                       next_var : VarSelector = None) -> Node:
+                       next_var : VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_array method.
 
         As it uses tail recursion, it may generate stack overflow for big trees.
@@ -89,19 +104,20 @@ class Tree:
         
         # If every variable is already selected
         if len(data_shape) == len(assigned_vars):
-            return LeafNode(data(tuple(assigned_vars)))
+            return LeafNode(data(_tuple_from_dict(assigned_vars)))
 
         else:
-            var = next_var(assigned_vars)            
-            cardinality = data.shape[var]
+            var = next_var(assigned_vars)
+            cardinality = data_shape[var]
+            # produced dict have str keys
             children = [
-                Tree._from_array(data,  [i])
+                Tree._from_callable(data,  data_shape, dict(assigned_vars, var=i))
                 for i in range(cardinality)
             ]
             return BranchNode(var, children)
 
     @classmethod
-    def from_callable(cls, data : callable, data_shape : Tuple[int], *, next_var : callable[[Dict[int, int]], int] = None) -> Tree:
+    def from_callable(cls, data : DataAccessor, data_shape : Tuple[int], *, next_var : Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a callable.
 
         Read a potential from a given callable, and store it in a value tree.
@@ -118,10 +134,10 @@ class Tree:
                   the next variables to be assigned. If not specified, variables are
                   are assigned in increasing order.
         """
-        return cls(root=Tree._from_callable(data, []), data_shape=list(data_shape))
+        return cls(root=Tree._from_callable(data=data, data_shape = data_shape, assigned_vars={}), data_shape=list(data_shape))
         
     @classmethod
-    def from_array(cls, data: np.ndarray) -> Tree:
+    def from_array(cls, data: np.ndarray):
         """Create a Tree from a numpy.ndarray.
 
         Read a potential from a given np.ndarray, and store it in a value tree.
@@ -142,10 +158,8 @@ class Tree:
 
     
     # Consider that you are using tail recursion so it might overload with big files.
-    # Suggestion: change it later.
-    # Should I do a hash-base module pruning?
     @staticmethod
-    def _value_prune(node: Node):
+    def _value_prune(node:nodes.Node):
         if node.is_terminal():
             return node
         else:
@@ -165,20 +179,16 @@ class Tree:
         self.root = Tree._value_prune(self.root)
 
     @staticmethod
-    def _access(node: Node, states: Iterable,
+    def _access(node:nodes.Node, states: List[int],
                 restraints: Dict[int, int]) -> float:
 
-        for var, state in enumerate(states):
-            index = restraints[var] if (var in restraints) else state
-            if node.is_terminal():
-                return node.value
-            else:
-                node = node.children[index]
+        while not node.is_terminal():
+            var = node.name
+            state = states[var]
+            node = node.children[state]
 
         return node.value
 
-    # DUDA: Should I use variadic input instead
-    # Obviar variables restrained no?
     def access(self,
                states: IndexType,
                *,
@@ -273,17 +283,19 @@ class Tree:
     def size(self):
         return self.root.size()
 
-    
     def SQEuclideanDistance(self, other : Tree) -> float:
         return sum((a.value - b.value)**2 for a,b in zip(self, other))        
     
     def KullbackDistance(self, other : Tree):
-        return sum((a.value * (np.log(a.value - b.value)) for a,b in zip(self, other))
+        return sum((a.value * (np.log(a.value - b.value))
+                    for a,b in zip(self, other)) )
 
-    
-    # mismo problema, podemos modular el access para que haga unas sumas
-    # o podemos devolver otro arbol con una variable menos.
-    def marginalize(self, variable: int):
+
+    @staticmethod
+    def _marginalize(node, variable) -> node:
+        pass
+                   
+    def marginalize(self, variable: int, *, inplace : bool = False):
         pass
 
     def sum(self, other: Tree):

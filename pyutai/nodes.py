@@ -26,7 +26,6 @@ import dataclasses
 import logging
 
 from typing import Dict, Iterable, List, Tuple
-from pyutai import IndexType
 
 import numpy as np
 
@@ -127,7 +126,7 @@ class BranchNode(Node):
     @abc.abstractmethod
     def size(self):
         """size is the number of nodes that lives under the root."""
-        return sum(child.size () for child in self.children)
+        return sum(child.size() for child in self.children)
 
 
 class LeafNode(Node):
@@ -167,7 +166,6 @@ class LeafNode(Node):
     def __deepcopy__(self, memo):
         return type(self)(self.value)
 
-
     @abc.abstractmethod
     def size(self):
         """size is the number of nodes that lives under the root."""
@@ -187,15 +185,14 @@ class MarkedNode(BranchNode):
     """
 
     @staticmethod
-    def _mark(node : Node):
+    def _mark(node: Node):
         if node.is_terminal():
             return np.uintc(value)
         if node is type(self):
             return node.mark
-        return 0 
-        
-    
-    def __init__(self, name: int, children: List[Node], *, mark : int = None):
+        return 0
+
+    def __init__(self, name: int, children: List[Node], *, mark: int = None):
         """Initializes BranchNode
 
         checks that the variable is a non-negative value and assign
@@ -210,17 +207,17 @@ class MarkedNode(BranchNode):
         """
 
         super().__init__(name, children)
-        if not mark: 
+        if not mark:
             self.mark = sum(3**i * MarkedNode._mark(child)
                             for i, child in enumerate(children))
 
-    def __eq__(self, other : Node):
+    def __eq__(self, other: Node):
         if other is type(self):
-             if not self.mark == other.mark:
+            if not self.mark == other.mark:
                 return False
 
         return super().__eq__(other)
-    
+
     # have to include memo
     def __deepcopy__(self, memo):
         t = type(self)(self.name, copy.deepcopy(self.children), self.mark)
