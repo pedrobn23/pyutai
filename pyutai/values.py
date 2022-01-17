@@ -30,16 +30,6 @@ from typing import Callable, Dict, Iterable, List, Tuple
 
 import numpy as np
 
-
-@dataclasses.dataclass
-class Element:
-    """
-    An element is a pair of a state of the variables of a potential, and the 
-    """
-    state: Tuple[int]
-    value: float
-
-
 # Union types are only allowed from python 3.10 onwards [1].
 # Typing analisys for access will only be done for List[int]
 # for eariler versions.
@@ -73,6 +63,15 @@ def _tuple_from_dict(data: Dict[str, int]):
 
 
 @dataclasses.dataclass
+class Element:
+    """
+    An element is a pair of a state of the variables of a potential, and the 
+    """
+    state: Tuple[int]
+    value: float
+
+
+@dataclasses.dataclass
 class Tree:
     """Tree stores the value of a  potential over a tree. 
 
@@ -85,7 +84,7 @@ class Tree:
         restraints: restrained variables in the tree.
     """
     root: nodes.Node
-    cardinality: List[int] = dataclasses.field(default_factory=list)
+    cardinality: Tuple[int] = dataclasses.field(default_factory=tuple)
     restraints: Dict[int, int] = dataclasses.field(default_factory=dict,
                                                    init=False)
 
@@ -167,6 +166,21 @@ class Tree:
             raise ValueError('Array should be non-empty')
 
         return cls.from_callable(data.item, data.shape)
+
+    def __iter__(self):
+        """Returns an iterator over the values of the Tree.
+
+        Returns:
+            Element: with the configuration of states variables and the associated value.
+        """
+        for var in itertools.product(*[range(var) for var in self.cardinality]):
+            yield Element(var, self.access(var))
+
+    def __deepcopy__(self, memo):
+        return type(self)(root=copy.deepcopy(self.root),
+                          cardinality=self.cardinality,
+                          restraints = copy.deepcopy(self.restraints))
+    restraints)
 
     # Consider that you are using tail recursion so it might overload with big files.
     @staticmethod
@@ -280,25 +294,6 @@ class Tree:
 
         self.restraints.pop(variable, None)
 
-    def __iter__(self):
-        """Returns an iterator over the values of the Tree.
-
-        Returns:
-            Element: with the configuration of states variables and the associated value.
-        """
-        for var in itertools.product(*[range(var) for var in self.cardinality]):
-            yield Element(var, self.access(var))
-
-    def size(self):
-        return self.root.size()
-
-    def SQEuclideanDistance(self, other: Tree) -> float:
-        return sum((a.value - b.value)**2 for a, b in zip(self, other))
-
-    def KullbackDistance(self, other: Tree):
-        return sum((
-            a.value * (np.log(a.value - b.value)) for a, b in zip(self, other)))
-
     @staticmethod
     def _marginalize(node, variable) -> node:
         pass
@@ -311,3 +306,13 @@ class Tree:
 
     def product(self, other: Tree):
         pass
+
+    def size(self):
+        return self.root.size()
+
+    def SQEuclideanDistance(self, other: Tree) -> float:
+        return sum((a.value - b.value)**2 for a, b in zip(self, other))
+
+    def KullbackDistance(self, other: Tree):
+        return sum((
+            a.value * (np.log(a.value - b.value)) for a, b in zip(self, other)))
