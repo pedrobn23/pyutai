@@ -21,6 +21,7 @@ import abc
 import collections
 import copy
 import dataclasses
+import itertools
 import logging
 import sys
 
@@ -35,7 +36,7 @@ class Element:
     """
     An element is a pair of a state of the variables of a potential, and the 
     """
-    states: Tuple[int]
+    state: Tuple[int]
     value: float
 
 
@@ -169,7 +170,7 @@ class Tree:
 
     # Consider that you are using tail recursion so it might overload with big files.
     @staticmethod
-    def _value_prune(node: nodes.Node):
+    def _prune(node: nodes.Node):
         if node.is_terminal():
             return node
         else:
@@ -177,7 +178,7 @@ class Tree:
 
             if all(child.is_terminal() for child in node.children):
                 if len(set(child.value for child in node.children)) == 1:
-                    return LeafNode(node.children[0].value)
+                    return nodes.LeafNode(node.children[0].value)
 
             return node
 
@@ -186,7 +187,7 @@ class Tree:
 
         Tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
-        self.root = Tree._value_prune(self.root)
+        self.root = Tree._prune(self.root)
 
     @staticmethod
     def _access(node: nodes.Node, states: List[int],
@@ -194,7 +195,7 @@ class Tree:
 
         while not node.is_terminal():
             var = node.name
-            state = states[var]
+            state = restraints[var] if var in restraints else states[var]
             node = node.children[state]
 
         return node.value
@@ -225,7 +226,6 @@ class Tree:
                 * Incorrect number of state are provided.
                 * An state is out of bound for its variable.
         """
-
         if len(states) != (n_variables := len(self.cardinality)):
             raise ValueError(f'Incorrect number of variables; expected: ' +
                              f'{n_variables}, received: {len(states)}.')
@@ -287,7 +287,7 @@ class Tree:
             Element: with the configuration of states variables and the associated value.
         """
         for var in itertools.product(*[range(var) for var in self.cardinality]):
-            raise Element(var, self.access(var))
+            yield Element(var, self.access(var))
 
     def size(self):
         return self.root.size()
