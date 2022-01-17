@@ -10,3 +10,7 @@ if sys.version_info.major >= 3 and sys.version_info.major >= 10:
     IndexType = List[int] | Tuple[int]
 else:
     IndexType = List[int]
+
+
+DataAccessor = callable[[IndexType], int]
+VarSelector = callable[[DataAccessor, Dict[int, int], int]

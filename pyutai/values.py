@@ -3,7 +3,7 @@
 This module contains the different implementations of potentials that are to be
 implemented. It is based on the implementations done in pgmpy.DiscreteFactor.
 
-Initially it will contains the class Tree, that is a wrapper class for a tree root node. It performs most of the operations.
+Initially it will contains the class Tree, that is a wrapper class for a tree root node.
 
 Typical usage example:
 
@@ -21,32 +21,53 @@ import collections
 import copy
 import dataclasses
 import logging
+import sys
 
 from typing import Dict, Iterable, List, Tuple
-from pyutai import IndexType
+from pyutai import nodes
 
 import numpy as np
 
 @dataclasses.dataclass
 class Element:
+    """
+    An element is a pair of a state of the variables of a potential, and the 
+    """
     states  : Tuple[int]
     value : float
 
+
+# Union types are only allowed from python 3.10 onwards [1].
+# Typing analisys for access will only be done for List[int]
+# for eariler versions.
+#
+# [1] https://www.python.org/dev/peps/pep-0604/
+if sys.version_info.major >= 3 and sys.version_info.major >= 10:
+    IndexType = List[int] | Tuple[int]
+    """IndexType is the type accepted by access method to retrieve a variable."""
+else:
+    IndexType = Tuple[int]
+
+DataAccessor = callable[[Tuple[int]], int]
+"""DataAccesor is the type of the functions that, from a state configuration of
+a set of variables, retrieves the associated value"""
+
+VarSelector = callable[[Dict[int, int]], int]
+"""VarSelector is the type of the functions that select which variable to explore
+next at the tree creation. It receives a  Dictionary with the variables that have
+ already been assigned and select the next variable to explore."""
+
 @dataclasses.dataclass
 class Tree:
-    """The summary line for a class docstring should fit on one line.
+    """Tree stores the value of a  potential over a tree. 
 
-    If the class has public attributes, they may be documented here
-    in an ``Attributes`` section and follow the same formatting as a
-    function's ``Args`` section. If ``napoleon_attr_annotations``
-    is True, types can be specified in the class body using ``PEP 526``
-    annotations.
+    It encapsulates a root node from pyutai.nodes and perfomr most operations
+    required between trees.
 
     Attributes:
         root: root node of the tree.
         cardinality: number of states of each variable.
         restraints: restrained variables in the tree.
-
     """
     root: Node
     cardinality: List[int] = dataclasses.field(default_factory=list)
@@ -54,42 +75,48 @@ class Tree:
     restraints: Dict[int, int] = dataclasses.field(default_factory=dict,
                                                    init=False)
 
-
    @classmethod
-    def _from_callable(cls, data : callable, data_shape : List[int], assigned_vars: List[int]) -> Node:
+    def _from_callable(cls, data : DataAccessor, data_shape : List[int],
+                       assigned_vars: Dict[int, int], *,
+                       next_var : VarSelector = None) -> Node:
         """Auxiliar function for tail recursion in from_array method.
 
         As it uses tail recursion, it may generate stack overflow for big trees.
         data_shape is changed from Tuple to list to avoid copying it multiple times,
-        due to the inmutability of tuples. """
-        var = len(assigned_vars)  # Next variable to be assigned
-
+        due to the immutability of tuples."""
+        if next_var is None:
+            next_var = len
+        
         # If every variable is already selected
-        if len(data_shape) == var:
+        if len(data_shape) == len(assigned_vars):
             return LeafNode(data(tuple(assigned_vars)))
 
         else:
+            var = next_var(assigned_vars)            
             cardinality = data.shape[var]
             children = [
-                Tree._from_array(data, assigned_vars + [i])
+                Tree._from_array(data,  [i])
                 for i in range(cardinality)
             ]
             return BranchNode(var, children)
 
     @classmethod
-    def from_callable(cls, data : callable, data_shape : Tuple[int]) -> Tree:
+    def from_callable(cls, data : callable, data_shape : Tuple[int], *, next_var : callable[[Dict[int, int]], int] = None) -> Tree:
         """Create a Tree from a callable.
 
         Read a potential from a given callable, and store it in a value tree.
         It does not returns a prune tree. Consider pruning the tree after creation.
-        Variables are named 0,...,len(data)-1, and as such will be refered for
+        Variables are named 0,...,len(data)-1, and as such will be referred for
         operations like restricting and accessing.
 
         Args:
-            data: callable that receibes a variable configuration and returns the
-                 corresponing value.
-            data_shape: The elements of the shape tuple give the lengths of
+            data: callable that receives a variable configuration and returns the
+                 corresponding value.
+            data_shape: the elements of the shape tuple give the lengths of
                   the corresponding tree variables.
+            next_var: callable that receives the already assigned variables and select
+                  the next variables to be assigned. If not specified, variables are
+                  are assigned in increasing order.
         """
         return cls(root=Tree._from_callable(data, []), data_shape=list(data_shape))
         
@@ -99,7 +126,7 @@ class Tree:
 
         Read a potential from a given np.ndarray, and store it in a value tree.
         It does not returns a prune tree. Consider pruning the tree after creation.
-        Variables are named 0,...,len(data)-1, and as such will be refered for
+        Variables are named 0,...,len(data)-1, and as such will be referred for
         operations like restricting and accessing.
 
         Args:
@@ -133,7 +160,7 @@ class Tree:
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches.
 
-        Tail-recursion function that consider if two childs are equal, in
+        Tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
         self.root = Tree._value_prune(self.root)
 
@@ -161,7 +188,7 @@ class Tree:
         Returns a value for a given state configuration. It receives either a
         list or a tuple of states, with as many states as variables.
 
-        In the case of retrained varaibles, via restraint method, those values
+        In the case of retrained variables, via restraint method, those values
         are ignored unless ignore_restraints is set to True. If no variable is
         restrained, every value is considered.
 
@@ -197,7 +224,7 @@ class Tree:
             return Tree._access(self.root, states, {})
 
     def restrain(self, variable: int, state: int):
-        """retraint variable to a particular state.
+        """restraint variable to a particular state.
 
         Restraint a variable to a particular state. See access for more
         information.
@@ -213,14 +240,14 @@ class Tree:
             raise ValueError(f'Invalid value {variable} for variable.')
 
         if state >= (bound := self.cardinality[variable]):
-            raise ValueError(f'State for variable {varriable} is ' +
+            raise ValueError(f'State for variable {variable} is ' +
                              f'out of bound; expected state in ' +
                              f'interval:[0,{bound}),received: {state}.')
 
         self.restraints[variable] = state
 
     def unrestrain(self, variable: int):
-        """unretraint variable.
+        """unrestrain variable.
 
         Args:
             variable: variable to be unrestrained.
@@ -251,7 +278,7 @@ class Tree:
         return sum((a.value - b.value)**2 for a,b in zip(self, other))        
     
     def KullbackDistance(self, other : Tree):
-        return sum((a.value * (np.log(a.value - b.vlaue)) for a,b in zip(self, other))
+        return sum((a.value * (np.log(a.value - b.value)) for a,b in zip(self, other))
 
     
     # mismo problema, podemos modular el access para que haga unas sumas

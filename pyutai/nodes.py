@@ -82,7 +82,7 @@ class BranchNode(Node):
     def __init__(self, name: int, children: List[Node]):
         """Initializes BranchNode
 
-        checks that the variable is a non-negative value and assign
+        checks that the name is a non-negative value and initializes the node.
 
         Args:
             name: Name of the variable associated with the node. It should be non-negative.
