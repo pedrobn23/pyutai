@@ -92,8 +92,7 @@ class Tree:
     def _from_callable(cls,
                        data: DataAccessor,
                        data_shape: List[int],
-                       assigned_vars: Dict[int, int],
-                       h=0,
+                       assigned_vars: Dict[str, int],
                        *,
                        next_var: VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_array method.
@@ -114,7 +113,7 @@ class Tree:
             # produced dict have str keys
             children = [
                 Tree._from_callable(data, data_shape,
-                                    dict(assigned_vars, **{str(var): i}), h + 1)
+                                    dict(assigned_vars, **{str(var): i}))
                 for i in range(cardinality)
             ]
 
@@ -179,8 +178,7 @@ class Tree:
     def __deepcopy__(self, memo):
         return type(self)(root=copy.deepcopy(self.root),
                           cardinality=self.cardinality,
-                          restraints = copy.deepcopy(self.restraints))
-    restraints)
+                          restraints=copy.deepcopy(self.restraints))
 
     # Consider that you are using tail recursion so it might overload with big files.
     @staticmethod
@@ -295,8 +293,52 @@ class Tree:
         self.restraints.pop(variable, None)
 
     @staticmethod
-    def _marginalize(node, variable) -> node:
-        pass
+    def _correct_name(node: nodes.BranchNode, variable):
+        if node.name > variable:
+            node.name -= 1
+
+    def _propagate_marginalization(self, node, variable, assigned_vars):
+        for i, child in enumerate(node.children):
+            node.children[i] = self._marginalize(
+                child, variable, dict(assigned_vars, **{str(var): i}))
+
+    @staticmethod
+    def _marginalized_accessor(node, marginalized_var):
+
+        def accessor(states):
+            while not node.is_terminal():
+                var = node.name
+                if var == marginalized_var:
+                    state = restraints[var] if var in restraints else states[var]
+                    node = node.children[state]
+                else:
+                    return sum(
+                        _marginalized_accesor(child, states, marginalized_var)
+                        for child in node.children)
+
+            return node.value
+
+    def _complete_marginalized_node(self, node: Node, marginalized_var: int,
+                                    assigned_vars: Dict(str, int)):
+        return Tree._from_callable(self,
+                                   data=Tree._marginalized_accessor(
+                                       node, marginalized_var),
+                                   data_shape=self.cardinality,
+                                   assigned_vars=assigned_vars)
+
+    def _marginalize(self, node, variable, assigned_vars) -> node:
+        if node.is_terminal():
+            return node
+
+        else:
+            current_var = node.name
+            if current_var != variable:
+                Tree._correct_name(node, variable)  #Correct the name
+                self._propagate_marginalization(self, node, variable,
+                                                assigned_vars)
+                return node
+            else:
+                return self._complete_marginalized_node()
 
     def marginalize(self, variable: int, *, inplace: bool = False):
         pass
