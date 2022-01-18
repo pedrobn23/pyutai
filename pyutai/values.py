@@ -39,7 +39,13 @@ class Element:
     states  : Tuple[int]
     value : float
 
-
+@dataclasses.dataclass
+class DiscreteVariable:
+    """
+    An DiscreteVariable represent a variable with a finite number of states. 
+    """
+    name : str
+    cardinality : int
 # Union types are only allowed from python 3.10 onwards [1].
 # Typing analisys for access will only be done for List[int]
 # for eariler versions.
