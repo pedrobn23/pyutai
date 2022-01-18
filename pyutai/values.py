@@ -21,47 +21,25 @@ import abc
 import collections
 import copy
 import dataclasses
+import itertools
 import logging
 import sys
-
 
 from pyutai import nodes
 from typing import Callable, Dict, Iterable, List, Tuple
 
-
 import numpy as np
 
-@dataclasses.dataclass
-class Element:
-    """
-    An element is a pair of a state of the variables of a potential, and the 
-    """
-    states  : Tuple[int]
-    value : float
 
-@dataclasses.dataclass
-class DiscreteVariable:
-    """
-    An DiscreteVariable represent a variable with a finite number of states. 
-    """
-    name : str
-    cardinality : int
-# Union types are only allowed from python 3.10 onwards [1].
-# Typing analisys for access will only be done for List[int]
-# for eariler versions.
-#
-# [1] https://www.python.org/dev/peps/pep-0604/
-if sys.version_info.major >= 3 and sys.version_info.major >= 10:
-    IndexType = List[int] | Tuple[int]
-    """IndexType is the type accepted by access method to retrieve a variable."""
-else:
-    IndexType = Tuple[int]
 
-DataAccessor = Callable[[Tuple[int]], int]
+IndexType = Dict[str, int]
+"""IndexType is the type accepted by access method to retrieve a variable."""
+
+DataAccessor = Callable[[IndexType], int]
 """DataAccesor is the type of the functions that, from a state configuration of
 a set of variables, retrieves the associated value"""
 
-VarSelector = Callable[[Dict[str, int]], int]
+VarSelector = Callable[[IndexType], str]
 """VarSelector is the type of the functions that select which variable to explore
 next at the tree creation. It receives a  Dictionary with the variables that have
  already been assigned and select the next variable to explore.
@@ -71,13 +49,20 @@ string representing a number.
 """
 
 
-
-def _tuple_from_dict(data : Dict[str, int]):
+def _tuple_from_dict(data: Dict[str, int]):
     """Helper function to create a tuple from a dictionary of 
     assigned vars. If the dictionary can not be converted to a 
     tuple it will raise IndexError."""
-    return tuple([data[str(i)] for i, _ in enumerate(data.keys)])
-        
+    return tuple([data[str(i)] for i, _ in enumerate(data.keys())])
+
+@dataclasses.dataclass
+class Element:
+    """
+    An element is a pair of a state of the variables of a potential, and the 
+    """
+    state: Tuple[int]
+    value: float
+
 
 @dataclasses.dataclass
 class Tree:
@@ -92,38 +77,47 @@ class Tree:
         restraints: restrained variables in the tree.
     """
     root: nodes.Node
-    cardinality: List[int] = dataclasses.field(default_factory=list)
-    restraints: Dict[int, int] = dataclasses.field(default_factory=dict,
-                                                   init=False)
-
+    variables : List[str]
+    cardinalities: Dict[int, int] = dataclasses.field(default_factory=tuple)
+    
     @classmethod
-    def _from_callable(cls, data : DataAccessor, data_shape : List[int],
-                       assigned_vars: Dict[int, int], *,
-                       next_var : VarSelector = None) -> nodes.Node:
+    def _from_callable(cls,
+                       data: DataAccessor,
+                       variables : List[str],
+                       cardinalities : Dict[str, int],
+                       assigned_vars: Dict[str, int],
+                       *,
+                       next_var: VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_array method.
 
         As it uses tail recursion, it may generate stack overflow for big trees.
         data_shape is changed from Tuple to list to avoid copying it multiple times,
         due to the immutability of tuples."""
         if next_var is None:
-            next_var = len
-        
+            next_var = lambda x: variables[len(assigned_vars)]
+
         # If every variable is already selected
-        if len(data_shape) == len(assigned_vars):
-            return LeafNode(data(_tuple_from_dict(assigned_vars)))
+        if len(variables) == len(assigned_vars):
+            return nodes.LeafNode(data(_tuple_from_dict(assigned_vars)))
 
         else:
             var = next_var(assigned_vars)
-            cardinality = data_shape[var]
-            # produced dict have str keys
+            cardinality = cardinalities[var]
             children = [
-                Tree._from_callable(data,  data_shape, dict(assigned_vars, var=i))
+                Tree._from_callable(data, variables, cardinality
+                                    dict(assigned_vars, var=i))
                 for i in range(cardinality)
             ]
-            return BranchNode(var, children)
+
+            return nodes.BranchNode(var, children)
 
     @classmethod
-    def from_callable(cls, data : DataAccessor, data_shape : Tuple[int], *, next_var : Callable[[Dict[int, int]], int] = None):
+    def from_callable(cls, 
+                      data: DataAccessor,
+                      variables : List[str],
+                      cardinalities : Dict[str, int],
+                      *,
+                      next_var: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a callable.
 
         Read a potential from a given callable, and store it in a value tree.
@@ -134,16 +128,28 @@ class Tree:
         Args:
             data: callable that receives a variable configuration and returns the
                  corresponding value.
-            data_shape: the elements of the shape tuple give the lengths of
-                  the corresponding tree variables.
-            next_var: callable that receives the already assigned variables and select
-                  the next variables to be assigned. If not specified, variables are
-                  are assigned in increasing order.
+            variables: list with the name of the variables used by the tree.
+            cardinalities: map from the name of the variables to its cardinalities. It
+                may have 
+            next_var: callable that receives a dictionary that maps the already assigned
+                  variables to its value and select the next variables to be assigned.
+                  If not specified, variables are are assigned in order.
         """
-        return cls(root=Tree._from_callable(data=data, data_shape = data_shape, assigned_vars={}), data_shape=list(data_shape))
-        
+        return cls(root=Tree._from_callable(data=data,
+                                            variables=variables,
+                                            cardinalities=cardinalities,
+                                            assigned_vars={},
+                                            next_var=next_var),
+                   variables=variables,
+                   cardinality=list(data_shape))
+
     @classmethod
-    def from_array(cls, data: np.ndarray):
+    def from_array(cls,
+                   data: DataAccessor,
+                   variables : List[str],
+                   cardinalities : Dict[str, int],
+                   *,
+                   next_var: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
 
         Read a potential from a given np.ndarray, and store it in a value tree.
@@ -160,12 +166,25 @@ class Tree:
         if data.size == 0:
             raise ValueError('Array should be non-empty')
 
-        return cls.from_callable(data.item, data.shape)
+        return cls.from_callable(data.item, variables, cardinalities, next_var = next_var)
 
-    
+    def __iter__(self):
+        """Returns an iterator over the values of the Tree.
+
+        Returns:
+            Element: with the configuration of states variables and the associated value.
+        """
+        for var in itertools.product(*[range(var) for var in self.cardinality]):
+            yield Element(var, self.access(var))
+
+    def __deepcopy__(self, memo):
+        return type(self)(root=copy.deepcopy(self.root),
+                          cardinality=self.cardinality,
+                          restraints=copy.deepcopy(self.restraints))
+
     # Consider that you are using tail recursion so it might overload with big files.
     @staticmethod
-    def _value_prune(node:nodes.Node):
+    def _prune(node: nodes.Node):
         if node.is_terminal():
             return node
         else:
@@ -173,24 +192,24 @@ class Tree:
 
             if all(child.is_terminal() for child in node.children):
                 if len(set(child.value for child in node.children)) == 1:
-                    return LeafNode(node.children[0].value)
+                    return nodes.LeafNode(node.children[0].value)
 
-            return node        
-    
+            return node
+
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches.
 
         Tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
-        self.root = Tree._value_prune(self.root)
+        self.root = Tree._prune(self.root)
 
     @staticmethod
-    def _access(node:nodes.Node, states: List[int],
+    def _access(node: nodes.Node, states: List[int],
                 restraints: Dict[int, int]) -> float:
 
         while not node.is_terminal():
             var = node.name
-            state = states[var]
+            state = restraints[var] if var in restraints else states[var]
             node = node.children[state]
 
         return node.value
@@ -221,7 +240,6 @@ class Tree:
                 * Incorrect number of state are provided.
                 * An state is out of bound for its variable.
         """
-
         if len(states) != (n_variables := len(self.cardinality)):
             raise ValueError(f'Incorrect number of variables; expected: ' +
                              f'{n_variables}, received: {len(states)}.')
@@ -276,32 +294,55 @@ class Tree:
 
         self.restraints.pop(variable, None)
 
+    @staticmethod
+    def _correct_name(node: nodes.BranchNode, variable):
+        if node.name > variable:
+            node.name -= 1
 
-    def __iter__(self):
-        """Returns an iterator over the values of the Tree.
-
-        Returns:
-            Element: with the configuration of states variables and the associated value.
-        """
-        for var in itertools.product(*[range(var) for var in self.cardinality]):
-            raise Element(var, self.access(var))
-
-    def size(self):
-        return self.root.size()
-
-    def SQEuclideanDistance(self, other : Tree) -> float:
-        return sum((a.value - b.value)**2 for a,b in zip(self, other))        
-    
-    def KullbackDistance(self, other : Tree):
-        return sum((a.value * (np.log(a.value - b.value))
-                    for a,b in zip(self, other)) )
-
+    def _propagate_marginalization(self, node, variable, assigned_vars):
+        for i, child in enumerate(node.children):
+            node.children[i] = self._marginalize(
+                child, variable, dict(assigned_vars, **{str(var): i}))
 
     @staticmethod
-    def _marginalize(node, variable) -> node:
-        pass
-                   
-    def marginalize(self, variable: int, *, inplace : bool = False):
+    def _marginalized_accessor(node, marginalized_var):
+
+        def accessor(states):
+            while not node.is_terminal():
+                var = node.name
+                if var == marginalized_var:
+                    state = restraints[var] if var in restraints else states[var]
+                    node = node.children[state]
+                else:
+                    return sum(
+                        _marginalized_accesor(child, states, marginalized_var)
+                        for child in node.children)
+
+            return node.value
+
+    def _complete_marginalized_node(self, node: Node, marginalized_var: int,
+                                    assigned_vars: Dict(str, int)):
+        return Tree._from_callable(self,
+                                   data=Tree._marginalized_accessor(
+                                       node, marginalized_var),
+                                   data_shape=self.cardinality,
+                                   assigned_vars=assigned_vars)
+
+    def _marginalize(self, node, variable, assigned_vars) -> node:
+        if node.is_terminal():
+            return node
+
+        else:
+            current_var = node.name
+            if current_var != variable:
+                Tree._correct_name(node, variable)  #Correct the name
+                self._propagate_marginalization(self, node, variable,
+                                                assigned_vars)
+                return node
+            else:
+                return self._complete_marginalized_node()
+
+    def marginalize(self, variable: int, *, inplace: bool = False):
         pass
 
     def sum(self, other: Tree):
@@ -309,3 +350,13 @@ class Tree:
 
     def product(self, other: Tree):
         pass
+
+    def size(self):
+        return self.root.size()
+
+    def SQEuclideanDistance(self, other: Tree) -> float:
+        return sum((a.value - b.value)**2 for a, b in zip(self, other))
+
+    def KullbackDistance(self, other: Tree):
+        return sum((
+            a.value * (np.log(a.value - b.value)) for a, b in zip(self, other)))
