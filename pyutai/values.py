@@ -49,12 +49,6 @@ string representing a number.
 """
 
 
-def _tuple_from_dict(data: Dict[str, int]):
-    """Helper function to create a tuple from a dictionary of 
-    assigned vars. If the dictionary can not be converted to a 
-    tuple it will raise IndexError."""
-    return tuple([data[str(i)] for i, _ in enumerate(data.keys())])
-
 @dataclasses.dataclass
 class Element:
     """
@@ -98,14 +92,14 @@ class Tree:
 
         # If every variable is already selected
         if len(variables) == len(assigned_vars):
-            return nodes.LeafNode(data(_tuple_from_dict(assigned_vars)))
+            return nodes.LeafNode(data(assigned_vars))
 
         else:
             var = next_var(assigned_vars)
             cardinality = cardinalities[var]
             children = [
-                Tree._from_callable(data, variables, cardinality
-                                    dict(assigned_vars, var=i))
+                Tree._from_callable(data, variables, cardinality,
+                                    dict(assigned_vars, var=i) )
                 for i in range(cardinality)
             ]
 
@@ -145,7 +139,7 @@ class Tree:
 
     @classmethod
     def from_array(cls,
-                   data: DataAccessor,
+                   data: np.ndarray,
                    variables : List[str],
                    cardinalities : Dict[str, int],
                    *,
@@ -166,7 +160,9 @@ class Tree:
         if data.size == 0:
             raise ValueError('Array should be non-empty')
 
-        return cls.from_callable(data.item, variables, cardinalities, next_var = next_var)
+        data_accessor = lambda x: data.item((x[var] for var in variables)) 
+        
+        return cls.from_callable(data_accessor, variables, cardinalities, next_var = next_var)
 
     def __iter__(self):
         """Returns an iterator over the values of the Tree.

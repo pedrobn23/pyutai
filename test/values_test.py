@@ -55,7 +55,7 @@ class TreeTestCase(unittest.TestCase):
 
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
-        tree = values.Tree.from_array(arr)
+        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1':2})
         tree.prune()
 
         pruned_repr = '''Tree(root=<class 'pyutai.nodes.BranchNode'>(0, [<class 'pyutai.nodes.BranchNode'>(1, [<class 'pyutai.nodes.LeafNode'>(1), <class 'pyutai.nodes.LeafNode'>(6)]), <class 'pyutai.nodes.LeafNode'>(2)]), cardinality=[2, 2], restraints={})'''
