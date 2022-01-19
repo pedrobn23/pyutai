@@ -86,7 +86,7 @@ class Tree:
         data_shape is changed from Tuple to list to avoid copying it multiple times,
         due to the immutability of tuples."""
         if next_var is None:
-            next_var = lambda x: variables[len(assigned_vars)]
+            next_var = lambda assigned_vars: variables[len(assigned_vars)]
 
         # If every variable is already selected
         if len(variables) == len(assigned_vars):
@@ -264,19 +264,26 @@ class Tree:
 
         return Tree._access(self.root, states)
 
-    @staticmethod
-    def _restrain(node: nodes.Node, variable: str, state: int):
+    @classmethod
+    def _restrain(cls, node: nodes.Node, restrictons : IntexType, accumulated_card):
+        #TODO: separate inplace and copy style
+        
         if node.is_terminal():
-            return copy.deepcopy(node)
+            return copy.deepcopy(node)*accumulated_card
 
         else:
-            if node.name == variable:
-                return copy.deepcopy(node.children[state])
+            if node.name in states:
+                state = restrictions[node.name]
+                return cls._restrain(node.children[state], accumulated_card)
             else:
-                children = []
-                #TODO
+                children = [
+                    cls._restrain(child, variable, state)
+                    for child in node.children
+                ]
+                return nodes.BranchNode(node.name, children)
+                
 
-    def restrain(self, variable: str, state: int, *, inplace: bool = False):
+    def restrain(self, restrictions : IndexType, *, inplace: bool = False):
         """restraint variable to a particular state.
 
         Restraint a variable to a particular state. See access for more
@@ -290,62 +297,35 @@ class Tree:
             ValueError: if either variable or state are out of bound.
         """
 
-    @staticmethod
-    def _correct_name(node: nodes.BranchNode, variable):
-        if node.name > variable:
-            node.name -= 1
+        accumulated_cardinality = math.prod((self.cardinalities[var] for var in restrictions))
+        restricted_root = Tree._restrain(self.root, restrictions, accumulated_cardinality)
 
-    def _propagate_marginalization(self, node, variable, assigned_vars):
-        for i, child in enumerate(node.children):
-            node.children[i] = self._marginalize(
-                child, variable, dict(assigned_vars, **{str(var): i}))
-
-    @staticmethod
-    def _marginalized_accessor(node, marginalized_var):
-
-        def accessor(states):
-            while not node.is_terminal():
-                var = node.name
-                if var == marginalized_var:
-                    state = restraints[var] if var in restraints else states[var]
-                    node = node.children[state]
-                else:
-                    return sum(
-                        _marginalized_accesor(child, states, marginalized_var)
-                        for child in node.children)
-
-            return node.value
-
-    def _complete_marginalized_node(self, node: Node, marginalized_var: int,
-                                    assigned_vars: Dict(str, int)):
-        return Tree._from_callable(self,
-                                   data=Tree._marginalized_accessor(
-                                       node, marginalized_var),
-                                   data_shape=self.cardinality,
-                                   assigned_vars=assigned_vars)
-
-    def _marginalize(self, node, variable, assigned_vars) -> node:
-        if node.is_terminal():
-            return node
-
+        if inplace:
+            self.root = restricted_root
+            self.variables.remove(variable)
+            return self
+        
         else:
-            current_var = node.name
-            if current_var != variable:
-                Tree._correct_name(node, variable)  #Correct the name
-                self._propagate_marginalization(self, node, variable,
-                                                assigned_vars)
-                return node
-            else:
-                return self._complete_marginalized_node()
+            # Fastest way to copy: https://stackoverflow.com/a/26875847.
+            restricted_variables = self.variables[:]
+            restricted_variables.remove(variable)
 
+            return type(self)(root=restricted_root, variables = restricted_variable, cardinalities = cardinalities)
+            
+
+    def product(self, other: Tree):
+        pass
+
+        
+    def _marginalize(self, node, variable, assigned_vars) -> node:
+        pass
+    
     def marginalize(self, variable: int, *, inplace: bool = False):
         pass
 
     def sum(self, other: Tree):
         pass
 
-    def product(self, other: Tree):
-        pass
 
     def size(self):
         return self.root.size()
