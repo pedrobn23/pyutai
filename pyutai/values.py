@@ -335,10 +335,6 @@ class Tree:
 
             return nodes.BranchNode(var, children)
 
-    @staticmethod
-    def _combine_variables(vars1, vars2):
-        return list(set(first_list + second_list))
-
     def product(self, other: Tree, *, inplace=False):
         """Combines two trees."""
 
