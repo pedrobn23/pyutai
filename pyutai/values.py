@@ -30,8 +30,6 @@ from typing import Callable, Dict, Iterable, List, Tuple
 
 import numpy as np
 
-
-
 IndexType = Dict[str, int]
 """IndexType is the type accepted by access method to retrieve a variable."""
 
@@ -71,14 +69,14 @@ class Tree:
         restraints: restrained variables in the tree.
     """
     root: nodes.Node
-    variables : List[str]
+    variables: List[str]
     cardinalities: Dict[int, int] = dataclasses.field(default_factory=tuple)
-    
+
     @classmethod
     def _from_callable(cls,
                        data: DataAccessor,
-                       variables : List[str],
-                       cardinalities : Dict[str, int],
+                       variables: List[str],
+                       cardinalities: Dict[str, int],
                        assigned_vars: Dict[str, int],
                        *,
                        next_var: VarSelector = None) -> nodes.Node:
@@ -97,19 +95,22 @@ class Tree:
         else:
             var = next_var(assigned_vars)
             cardinality = cardinalities[var]
-            children = [
-                Tree._from_callable(data, variables, cardinality,
-                                    dict(assigned_vars, var=i) )
-                for i in range(cardinality)
-            ]
+
+            # propagate the creation
+            children = []
+            for i in range(cardinality):
+                new_vars = dict(assigned_vars, **{var: i})
+                child = Tree._from_callable(data, variables, cardinalities,
+                                            new_vars)
+                children.append(child)
 
             return nodes.BranchNode(var, children)
 
     @classmethod
-    def from_callable(cls, 
+    def from_callable(cls,
                       data: DataAccessor,
-                      variables : List[str],
-                      cardinalities : Dict[str, int],
+                      variables: List[str],
+                      cardinalities: Dict[str, int],
                       *,
                       next_var: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a callable.
@@ -135,13 +136,13 @@ class Tree:
                                             assigned_vars={},
                                             next_var=next_var),
                    variables=variables,
-                   cardinality=list(data_shape))
+                   cardinalities=cardinalities)
 
     @classmethod
     def from_array(cls,
                    data: np.ndarray,
-                   variables : List[str],
-                   cardinalities : Dict[str, int],
+                   variables: List[str],
+                   cardinalities: Dict[str, int],
                    *,
                    next_var: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
@@ -155,14 +156,25 @@ class Tree:
             data: table-valued potential.
 
         Raises:
-            ValueError: is provided with an empty table.
+            ValueError: is provided with an empty table, or if Array and cardinalities
+                does not match.
         """
         if data.size == 0:
             raise ValueError('Array should be non-empty')
+        for index, var in enumerate(variables):
+            if data.shape[index] != cardinalities[var]:
+                raise ValueError(
+                    'Array shape must match cardinalities; In variable ' +
+                    f'{var}: received cardinality {cardinalities[var]},' +
+                    f'in array {data.shape[index]}.')
 
-        data_accessor = lambda x: data.item((x[var] for var in variables)) 
-        
-        return cls.from_callable(data_accessor, variables, cardinalities, next_var = next_var)
+        # adapter from IndexType to numpy Index-Tuple
+        data_accessor = lambda x: data.item(tuple(x[var] for var in variables))
+
+        return cls.from_callable(data_accessor,
+                                 variables,
+                                 cardinalities,
+                                 next_var=next_var)
 
     def __iter__(self):
         """Returns an iterator over the values of the Tree.
@@ -170,13 +182,21 @@ class Tree:
         Returns:
             Element: with the configuration of states variables and the associated value.
         """
-        for var in itertools.product(*[range(var) for var in self.cardinality]):
-            yield Element(var, self.access(var))
+        print(self.variables)
+        for states in itertools.product(
+                *[range(self.cardinalities[var]) for var in self.variables]):
+            indexes = {
+                variable: state
+                for variable, state in zip(self.variables, states)
+            }
+            yield Element(indexes, self.access(indexes))
 
     def __deepcopy__(self, memo):
+        """Deepcopy the provided tree. Beaware that cardinalities is assumed to be shared
+        globaly within all trees, so it is not copied."""
         return type(self)(root=copy.deepcopy(self.root),
-                          cardinality=self.cardinality,
-                          restraints=copy.deepcopy(self.restraints))
+                          variables=self.variables[:],
+                          cardinalities=self.cardinalities)
 
     # Consider that you are using tail recursion so it might overload with big files.
     @staticmethod
@@ -200,12 +220,11 @@ class Tree:
         self.root = Tree._prune(self.root)
 
     @staticmethod
-    def _access(node: nodes.Node, states: List[int],
-                restraints: Dict[int, int]) -> float:
-
+    def _access(node: nodes.Node, states: IndexType) -> float:
+        """Helper method for access function."""
         while not node.is_terminal():
             var = node.name
-            state = restraints[var] if var in restraints else states[var]
+            state = states[var]
             node = node.children[state]
 
         return node.value
@@ -233,27 +252,31 @@ class Tree:
 
         Raises:
             ValueError: if incorrect states are provided. In particular if:
-                * Incorrect number of state are provided.
                 * An state is out of bound for its variable.
         """
-        if len(states) != (n_variables := len(self.cardinality)):
-            raise ValueError(f'Incorrect number of variables; expected: ' +
-                             f'{n_variables}, received: {len(states)}.')
 
-        for var, (state, bound) in enumerate(zip(states, self.cardinality)):
-            if state >= bound or state < 0:
+        for var in states:
+            if (state := states[var]) >= (bound :=
+                                          self.cardinalities[var]) or state < 0:
                 raise ValueError(f'State for variable {var} is out of bound;' +
                                  f'expected state in interval:[0,{bound}),' +
                                  f'received: {state}.')
 
-        if self.restraints and not ignore_restraints:
-            logging.warning(f'variables {list(self.restraints.keys())} ' +
-                            f'will be ignored as they are restrained.')
-            return Tree._access(self.root, states, self.restraints)
-        else:
-            return Tree._access(self.root, states, {})
+        return Tree._access(self.root, states)
 
-    def restrain(self, variable: int, state: int):
+    @staticmethod
+    def _restrain(node: nodes.Node, variable: str, state: int):
+        if node.is_terminal():
+            return copy.deepcopy(node)
+
+        else:
+            if node.name == variable:
+                return copy.deepcopy(node.children[state])
+            else:
+                children = []
+                #TODO
+
+    def restrain(self, variable: str, state: int, *, inplace: bool = False):
         """restraint variable to a particular state.
 
         Restraint a variable to a particular state. See access for more
@@ -266,29 +289,6 @@ class Tree:
         Raises:
             ValueError: if either variable or state are out of bound.
         """
-        if variable >= len(self.cardinality) or variable < 0:
-            raise ValueError(f'Invalid value {variable} for variable.')
-
-        if state >= (bound := self.cardinality[variable]):
-            raise ValueError(f'State for variable {variable} is ' +
-                             f'out of bound; expected state in ' +
-                             f'interval:[0,{bound}),received: {state}.')
-
-        self.restraints[variable] = state
-
-    def unrestrain(self, variable: int):
-        """unrestrain variable.
-
-        Args:
-            variable: variable to be unrestrained.
-
-        Raises:
-            ValueError: if variable is out of bound.
-        """
-        if variable >= len(self.cardinality) or variable < 0:
-            raise ValueError(f'Invalid value {variable} for variable.')
-
-        self.restraints.pop(variable, None)
 
     @staticmethod
     def _correct_name(node: nodes.BranchNode, variable):

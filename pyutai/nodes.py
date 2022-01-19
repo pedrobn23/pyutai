@@ -17,7 +17,7 @@ Typical usage example:
   # We can perform most of the operations over tree. For example:
   tree.prune()
   tree.access([state_configuration()])
- """
+"""
 
 import abc
 import collections
@@ -84,17 +84,15 @@ class BranchNode(Node):
         checks that the name is a non-negative value and initializes the node.
 
         Args:
-            name: Name of the variable associated with the node. It should be non-negative.
+            name: Name of the variable associated with the node. 
             children: Each of the nodes associated with each state of variable name.
-                It should be non-negative.
+                It should be non-empty.
 
         Raises:
             ValueError: Whenever name is negative of children is empty.
         """
         super().__init__()
 
-        if name < 0:
-            raise ValueError(f'Name must be non-negative, got: {name}')
         if not children:
             raise ValueError(
                 f'Children must be a non-empty list, got: {children}')

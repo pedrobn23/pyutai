@@ -16,14 +16,15 @@ class NodesTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.arrays = [
-            np.array([[1, 6], [2, 2]]),
-            np.array([[[1, 90876], [1, 7], [0,0]], [[2, 34], [3, 23],[0,0]]])
+            np.array([[1, 6, 3], [2, 2, 2]]),
+            np.array([[[1, 90876], [1, 7], [0, 0]], [[2, 34], [3, 23], [0, 0]]])
         ]
-        self.variables = [['A','B'], ['A','B', 'C']]
+        self.variables = [['A', 'B'], ['A', 'B', 'C']]
 
-        self.cardinalities = {'A':2, 'B':2, 'C': 3}
+        self.cardinalities = {'A': 2, 'B': 3, 'C': 2}
         self.branch_nodes = [
-            values.Tree.from_array(arr, variables, self.cardinalities).root for arr, variables in zip(self.arrays, self.variables)
+            values.Tree.from_array(arr, variables, self.cardinalities).root
+            for arr, variables in zip(self.arrays, self.variables)
         ]
 
         self.n_leaf_nodes = 5
@@ -33,7 +34,8 @@ class NodesTestCase(unittest.TestCase):
 
     def testEquality(self):
         other_branch_nodes = [
-            values.Tree.from_array(arr).root for arr in self.arrays
+            values.Tree.from_array(arr, variables, self.cardinalities).root
+            for arr, variables in zip(self.arrays, self.variables)
         ]
         for nodeA, nodeB in zip(self.branch_nodes, other_branch_nodes):
             self.assertEqual(nodeA, nodeB)

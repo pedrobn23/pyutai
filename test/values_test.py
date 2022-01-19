@@ -2,6 +2,7 @@
 Module that implements automatic test cases for TreePotential class.
 """
 
+import copy
 import itertools
 import unittest
 import numpy as np
@@ -17,22 +18,40 @@ class TreeTestCase(unittest.TestCase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.arrays = [
-            np.array([1]),
-            np.array([[1, 6], [2, 2]]),
-            np.array([[[1, 90876], [1, 7]], [[2, 34], [3, 23]]])
+            np.array([[1, 6, 3], [2, 2, 2]]),
+            np.array([[[1, 90876], [1, 7], [0, 0]], [[2, 34], [3, 23], [0, 0]]])
+        ]
+        self.variables = [['A', 'B'], ['A', 'B', 'C']]
+
+        self.cardinalities = {'A': 2, 'B': 3, 'C': 2}
+        self.trees = [
+            values.Tree.from_array(arr, variables, self.cardinalities)
+            for arr, variables in zip(self.arrays, self.variables)
         ]
 
-        self.trees = [values.Tree.from_array(arr) for arr in self.arrays]
         self.maxDiff = 1000
 
-    def test_execptions_from_array(self):
+    def test_deepcopy_and_equality(self):
+        for tree in self.trees:
+            other = copy.deepcopy(tree)
+            self.assertEqual(other, tree)
+            self.assertNotEqual(id(other), id(tree))
+
+    def test_exceptions_from_array(self):
         with self.assertRaises(ValueError):
-            values.Tree.from_array(np.array([]))
+            values.Tree.from_array(np.array([]), [], {})
+        with self.assertRaises(ValueError):
+            values.Tree.from_array(np.array([1]), ['A'], {'A': 2})
 
     def _check_trees(self, arrays, trees):
+
         for arr, tree in zip(arrays, trees):
+            # adapter from IndexType to numpy Index-Tuple
+            data_accessor = lambda x: arr.item(
+                tuple(x[var] for var in tree.variables))
+
             for element in tree:
-                self.assertEqual(arr[element.state], element.value)
+                self.assertEqual(data_accessor(element.state), element.value)
 
     def test_access(self):
         self._check_trees(self.arrays, self.trees)
@@ -55,10 +74,14 @@ class TreeTestCase(unittest.TestCase):
 
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
-        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1':2})
+
+        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        print(tree)
         tree.prune()
 
-        pruned_repr = '''Tree(root=<class 'pyutai.nodes.BranchNode'>(0, [<class 'pyutai.nodes.BranchNode'>(1, [<class 'pyutai.nodes.LeafNode'>(1), <class 'pyutai.nodes.LeafNode'>(6)]), <class 'pyutai.nodes.LeafNode'>(2)]), cardinality=[2, 2], restraints={})'''
+        print(tree)
+
+        pruned_repr = '''Tree(root=<class 'pyutai.nodes.BranchNode'>('0', [<class 'pyutai.nodes.BranchNode'>('1', [<class 'pyutai.nodes.LeafNode'>(1), <class 'pyutai.nodes.LeafNode'>(6)]), <class 'pyutai.nodes.LeafNode'>(2)]), variables=['0', '1'], cardinalities={'0': 2, '1': 2})'''
 
         self.assertEqual(repr(tree), pruned_repr)
 
