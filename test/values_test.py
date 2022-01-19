@@ -16,6 +16,7 @@ class TreeTestCase(unittest.TestCase):
     """
 
     def __init__(self, *args, **kwargs):
+
         super().__init__(*args, **kwargs)
         self.arrays = [
             np.array([[1, 6, 3], [2, 2, 2]]),
@@ -43,47 +44,53 @@ class TreeTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             values.Tree.from_array(np.array([1]), ['A'], {'A': 2})
 
-    def _check_trees(self, arrays, trees):
-
-        for arr, tree in zip(arrays, trees):
+    def test_access(self):
+        for arr, tree, variables in zip(self.arrays, self.trees,
+                                        self.variables):
             # adapter from IndexType to numpy Index-Tuple
             data_accessor = lambda x: arr.item(
-                tuple(x[var] for var in tree.variables))
+                tuple(x[var] for var in variables))
 
             for element in tree:
                 self.assertEqual(data_accessor(element.state), element.value)
 
-    def test_access(self):
-        self._check_trees(self.arrays, self.trees)
-
     def test_restraint(self):
-        for arr, tree in zip(self.arrays, self.trees):
+        for arr, tree, variables in zip(self.arrays, self.trees,
+                                        self.variables):
             if arr.shape[0] > 1:  # otherwise there is little to restrain
-                tree.restrain(0, 0)
+                restrained_tree = tree.restrain({'A': 0})
 
-                state = [i - 1 for i in arr.shape]
-                restrained_state = [i - 1 for i in arr.shape]
+                state = {var: self.cardinalities[var] - 1 for var in variables}
+                restrained_state = [
+                    self.cardinalities[var] - 1 for var in variables
+                ]
                 restrained_state[0] = 0
-
                 self.assertEqual(arr[tuple(restrained_state)],
-                                 tree.access(state))
-                tree.unrestrain(0)
-
-        # to check that variables are properly unrestained
-        self._check_trees(self.arrays, self.trees)
+                                 restrained_tree.access(state))
 
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
 
         tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
-        print(tree)
+        self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
+
         tree.prune()
 
-        print(tree)
+        self.assertEqual(tree.root.size(), 5)  # prune two leaves
 
-        pruned_repr = '''Tree(root=<class 'pyutai.nodes.BranchNode'>('0', [<class 'pyutai.nodes.BranchNode'>('1', [<class 'pyutai.nodes.LeafNode'>(1), <class 'pyutai.nodes.LeafNode'>(6)]), <class 'pyutai.nodes.LeafNode'>(2)]), variables=['0', '1'], cardinalities={'0': 2, '1': 2})'''
+    def test_product(self):
+        card = {'A': 2, 'B': 2, 'C': 2}
 
-        self.assertEqual(repr(tree), pruned_repr)
+        arr1 = np.array([[1, 2], [2, 3]])
+        tree1 = values.Tree.from_array(arr1, ['A', 'B'], card)
+
+        arr2 = np.array([[4, 5], [0, 0]])
+        tree2 = values.Tree.from_array(arr2, ['B', 'C'], card)
+
+        arr3 = np.array([[[4, 5], [0, 0]], [[8, 10], [0, 0]]])
+        tree3 = values.Tree.from_array(arr3, ['A', 'B', 'C'], card)
+
+        tree4 = tree1.product(tree2)
 
 
 if __name__ == '__main__':

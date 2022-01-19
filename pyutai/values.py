@@ -22,6 +22,7 @@ import collections
 import copy
 import dataclasses
 import itertools
+import math
 import logging
 import sys
 
@@ -65,11 +66,12 @@ class Tree:
 
     Attributes:
         root: root node of the tree.
-        cardinality: number of states of each variable.
-        restraints: restrained variables in the tree.
+        variables: Set of variables name to be used in the tree.
+        cardinality: number of states of each variable. Assumed to be a global
+            variable shared with other trees, maybe in the same network.
     """
     root: nodes.Node
-    variables: List[str]
+    variables: Set[str]
     cardinalities: Dict[int, int] = dataclasses.field(default_factory=tuple)
 
     @classmethod
@@ -85,6 +87,7 @@ class Tree:
         As it uses tail recursion, it may generate stack overflow for big trees.
         data_shape is changed from Tuple to list to avoid copying it multiple times,
         due to the immutability of tuples."""
+
         if next_var is None:
             next_var = lambda assigned_vars: variables[len(assigned_vars)]
 
@@ -135,7 +138,7 @@ class Tree:
                                             cardinalities=cardinalities,
                                             assigned_vars={},
                                             next_var=next_var),
-                   variables=variables,
+                   variables=set(variables),
                    cardinalities=cardinalities)
 
     @classmethod
@@ -171,10 +174,11 @@ class Tree:
         # adapter from IndexType to numpy Index-Tuple
         data_accessor = lambda x: data.item(tuple(x[var] for var in variables))
 
-        return cls.from_callable(data_accessor,
-                                 variables,
-                                 cardinalities,
-                                 next_var=next_var)
+        return cls.from_callable(
+            data_accessor,
+            variables,  # has to be a list
+            cardinalities,
+            next_var=next_var)
 
     def __iter__(self):
         """Returns an iterator over the values of the Tree.
@@ -182,7 +186,6 @@ class Tree:
         Returns:
             Element: with the configuration of states variables and the associated value.
         """
-        print(self.variables)
         for states in itertools.product(
                 *[range(self.cardinalities[var]) for var in self.variables]):
             indexes = {
@@ -195,16 +198,16 @@ class Tree:
         """Deepcopy the provided tree. Beaware that cardinalities is assumed to be shared
         globaly within all trees, so it is not copied."""
         return type(self)(root=copy.deepcopy(self.root),
-                          variables=self.variables[:],
+                          variables=self.variables.copy(),
                           cardinalities=self.cardinalities)
 
     # Consider that you are using tail recursion so it might overload with big files.
-    @staticmethod
-    def _prune(node: nodes.Node):
+    @classmethod
+    def _prune(cls, node: nodes.Node):
         if node.is_terminal():
             return node
         else:
-            node.children = [Tree._prune(node) for node in node.children]
+            node.children = [cls._prune(node) for node in node.children]
 
             if all(child.is_terminal() for child in node.children):
                 if len(set(child.value for child in node.children)) == 1:
@@ -217,7 +220,7 @@ class Tree:
 
         Tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
-        self.root = Tree._prune(self.root)
+        self.root = type(self)._prune(self.root)
 
     @staticmethod
     def _access(node: nodes.Node, states: IndexType) -> float:
@@ -262,70 +265,103 @@ class Tree:
                                  f'expected state in interval:[0,{bound}),' +
                                  f'received: {state}.')
 
-        return Tree._access(self.root, states)
+        return type(self)._access(self.root, states)
 
     @classmethod
-    def _restrain(cls, node: nodes.Node, restrictons : IntexType, accumulated_card):
+    def _restrain(cls, node: nodes.Node, restrictions: IntexType):
         #TODO: separate inplace and copy style
-        
+
         if node.is_terminal():
-            return copy.deepcopy(node)*accumulated_card
+            return nodes.LeafNode(node.value)
 
         else:
-            if node.name in states:
+            if node.name in restrictions:
                 state = restrictions[node.name]
-                return cls._restrain(node.children[state], accumulated_card)
+                return cls._restrain(node.children[state], restrictions)
             else:
                 children = [
-                    cls._restrain(child, variable, state)
+                    cls._restrain(child, restrictions)
                     for child in node.children
                 ]
                 return nodes.BranchNode(node.name, children)
-                
 
-    def restrain(self, restrictions : IndexType, *, inplace: bool = False):
+    def restrain(self, restrictions: IndexType, *, inplace: bool = False):
         """restraint variable to a particular state.
 
         Restraint a variable to a particular state. See access for more
         information.
 
         Args:
-            variable: variable to be restrained.
-            state: state to restrain the variable with.
+            restrictions: Mapping from variables to state to which 
+                restrict them.
+            inplace: If true, modifications will be made on the provided
+                tree. Otherwise, the operation will return a modified new
+                tree.
 
+        Returns: Modified tree.
         Raises:
             ValueError: if either variable or state are out of bound.
         """
-
-        accumulated_cardinality = math.prod((self.cardinalities[var] for var in restrictions))
-        restricted_root = Tree._restrain(self.root, restrictions, accumulated_cardinality)
+        restricted_root = type(self)._restrain(self.root, restrictions)
 
         if inplace:
             self.root = restricted_root
-            self.variables.remove(variable)
+            self.variables.difference_update(restrictions.keys())
             return self
-        
+
         else:
             # Fastest way to copy: https://stackoverflow.com/a/26875847.
-            restricted_variables = self.variables[:]
-            restricted_variables.remove(variable)
+            variables = self.variables.difference(restrictions.keys())
 
-            return type(self)(root=restricted_root, variables = restricted_variable, cardinalities = cardinalities)
-            
+            return type(self)(root=restricted_root,
+                              variables=variables,
+                              cardinalities=self.cardinalities)
 
-    def product(self, other: Tree):
-        pass
+    @classmethod
+    def _product(cls, node, other):
 
-        
+        if node.is_terminal() and other.is_terminal():
+            return nodes.LeafNode(node.value * other.value)
+
+        elif node.is_terminal() and not other.is_terminal():
+            return cls._product(other, node)
+
+        else:  # Whenever node is not terminal
+            var = node.name
+            children = [
+                cls._product(child, cls._restrain(other, {var: i}))
+                for i, child in enumerate(node.children)
+            ]
+
+            return nodes.BranchNode(var, children)
+
+    @staticmethod
+    def _combine_variables(vars1, vars2):
+        return list(set(first_list + second_list))
+
+    def product(self, other: Tree, *, inplace=False):
+        """Combines two trees."""
+
+        root = type(self)._product(self.root, other.root)
+        variables = self.variables.union(other.variables)
+        tree = type(self)(root=root,
+                          variables=variables,
+                          cardinalities=self.cardinalities)
+        if inplace:
+            self = tree
+
+        return tree
+
+    def sum(self):
+
+        accumulated_cardinality = math.prod(
+            (self.cardinalities[var] for var in restrictions))
+
     def _marginalize(self, node, variable, assigned_vars) -> node:
         pass
-    
+
     def marginalize(self, variable: int, *, inplace: bool = False):
         pass
-
-    def sum(self, other: Tree):
-        pass
-
 
     def size(self):
         return self.root.size()
