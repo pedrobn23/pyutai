@@ -1,43 +1,90 @@
+"""
+
+[1] Wang, Haizhou & Song, Mingzhou. (2011). Ckmeans.1d.dp: Optimal k-means Clustering in One Dimension by Dynamic Programming. The R Journal. 3. 29-33. 10.32614/RJ-2011-015. 
+"""
 import collections
 import dataclasses
+import functools
+
 import numpy as np
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Iterable
 
 
 @dataclasses.dataclass
-class ClusterPotential:
-    clusters: Dict[int, set] = dataclasses.field(
-        default_factory=collections.defaultdict(set))
-    cardinality: Tuple[int] = None
+class ClusterDistance:
+    """Following notation from [1]."""
+    median : float
+    error : float
+    
 
+def euclidean_distance_table(elems):
+    @functools.cache
+    def distance(j,i):
+        if j>i: # null case
+            return ClusterDistance(0, 0)
+
+        if j == i: # trivial case
+            return ClusterDistance(elems(j), 0)
+
+        else: # recursion case
+            k = i-j
+            cd = distance(j+1, i) 
+            error = cd.error + (k) / (k+1) * (elems(i) - cd.median)**2
+            median = (elems(i) + (i-1)*cd.median) / i
+        
+
+@dataclasses.dataclass
+class ClusterPotential:
+    clusters: Dict[float, set] = dataclasses.field(
+        default_factory=collections.defaultdict(set))
+
+    variables : List[str]
+    cardinalities : Dict[str, int]
+    
+    
     def access(self, indexes: Tuple[int]) -> float:
-        for value, index_set in self.clusters:
+        for value, index_set in self.clusters.items():
             if indexes in index_set:
                 return value
 
     @classmethod
-    def from_array(cls, array: np.ndarray):
-        self.cardinality = arr.shape
-        for index, value in np.ndenumerate(array):
-            self.cluster[value].append(index)
+    def from_iterable(cls, it : Iterable):
+        cluster = collections.defaultdict(set)
+        for index, value in it:
+            cluster[value].append(index)
 
-    @staticmethod
-    def euclidean_distance(*elems: float):
-        mean = sum(elems) / len(elems)
-        return sum((e - mean)**2 for e in elems)
+        return cls(cluster, card)
+            
+    @classmethod
+    def from_array(cls, array: np.ndarray):
+        return cls.from_iterable(np.ndenumerate(array))
+
+    @classmethod
+    def from_tree(cls, tree):
+        return cls.from_iterable(tree)
+
+    def _flatten_item(indexes : Dict[str, int]):
+        pass
+
+    def _unflatten_item(index : int):
+        pass
+
+
 
     def reduce_cluster(self, goal):
-        n_elements = np.prod(self.cardinality)
 
+        # Little to do
         if goal >= len(self.cluster):
             return self
 
-        distance
+        # Dinamic porgraming
+        self.D = [[0] * goal] * n_elements
+        distance = euclidean_distance(elems)
 
-        D = [[0] * goal] * n_elements
         for i in range(1, n_elements):
             for m in range(1, goals):
-                D[i][m] = min(D[i - 1][j - 1])
+                for j in range(i,m-1, -1):     
+                    D[i][m] = min(D[j - 1][m - 1] + self.eu_distance(j, i) for j in )
 
 
 if __name__ == '__main__':
