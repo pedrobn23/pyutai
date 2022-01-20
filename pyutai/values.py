@@ -324,18 +324,26 @@ class Tree:
             return nodes.LeafNode(node.value * other.value)
 
         elif node.is_terminal() and not other.is_terminal():
+            # Special cases for fast product
+            if node.value == 0:
+                return nodes.LeafNode(0)
+            elif node.value == 1:
+                return copy.deepcopy(other)
+
+            # General case - interchange order
             return cls._product(other, node)
 
         else:  # Whenever node is not terminal
             var = node.name
             children = [
-                cls._product(child, cls._restrain(other, {var: i}))
+                cls._product(child, cls._restrain(other, {var: i},
+                                                  inplace=False))
                 for i, child in enumerate(node.children)
             ]
 
             return nodes.BranchNode(var, children)
 
-    def product(self, other: Tree, *, inplace=False):
+    def product(self, other: Tree, *, inplace: bool = False):
         """Combines two trees."""
 
         root = type(self)._product(self.root, other.root)
@@ -348,16 +356,70 @@ class Tree:
 
         return tree
 
-    def sum(self):
+    @classmethod
+    def _sum(cls, node, other):
+        """ TODO: make special method for faster sum reduction"""
 
-        accumulated_cardinality = math.prod(
-            (self.cardinalities[var] for var in restrictions))
+        if node.is_terminal() and other.is_terminal():
+            return nodes.LeafNode(node.value + other.value)
 
-    def _marginalize(self, node, variable, assigned_vars) -> node:
-        pass
+        elif node.is_terminal() and not other.is_terminal():
+            # Special cases for fast sum
+            if node.value == 0:
+                return copy.deepcopy(other)
+
+            # General case - interchange order
+            return cls._sum(other, node)
+
+        else:  # Whenever node is not terminal
+            var = node.name
+            children = [
+                cls._sum(child, cls._restrain(other, {var: i}, inplace=False))
+                for i, child in enumerate(node.children)
+            ]
+
+            return nodes.BranchNode(var, children)
+
+    def sum(self, other: Tree, *, inplace: bool = False):
+        """sum two trees"""
+
+        if self.variables != other.variables:
+            raise ValueError("Trees needs to have the same variables to be sum")
+
+        root = type(self)._sum(self.root, other.root)
+        tree = type(self)(root=root,
+                          variables=variables,
+                          cardinalities=self.cardinalities)
+        if inplace:
+            self = tree
+
+        return tree
+
+    @classmethod
+    def _marginalize(cls, node: nodes.Node, variable: str):
+        if node.is_terminal():
+            return nodes.LeafNode(node.value * self.cardinalities[variable])
+
+        else:
+            if node.name == variable:
+                return reduce(lambda a, b: a._sum(b), node.children)
+            else:
+                children = [
+                    cls._restrain(child, restrictions)
+                    for child in node.children
+                ]
+                return nodes.BranchNode(node.name, children)
 
     def marginalize(self, variable: int, *, inplace: bool = False):
-        pass
+        """Marginalize a variable"""
+        root = type(self)._marginalize(self.root, other.root)
+        tree = type(self)(root=root,
+                          variables=variables,
+                          cardinalities=self.cardinalities)
+        if inplace:
+            self = tree
+
+        return tree
 
     def size(self):
         return self.root.size()
