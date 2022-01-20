@@ -161,6 +161,8 @@ class Tree:
         Raises:
             ValueError: is provided with an empty table, or if Array and cardinalities
                 does not match.
+
+        TODO: add error when cardinality len dos not match data.shape len.
         """
         if data.size == 0:
             raise ValueError('Array should be non-empty')
@@ -200,6 +202,9 @@ class Tree:
         return type(self)(root=copy.deepcopy(self.root),
                           variables=self.variables.copy(),
                           cardinalities=self.cardinalities)
+    def size(self):
+        """Number of nodes contained in the tree. May varies upon pruning."""
+        return self.root.size()
 
     # Consider that you are using tail recursion so it might overload with big files.
     @classmethod
@@ -232,10 +237,7 @@ class Tree:
 
         return node.value
 
-    def access(self,
-               states: IndexType,
-               *,
-               ignore_restraints: bool = False) -> float:
+    def access(self, states: IndexType) -> float:
         """Returns a value for a given series of states.
 
         Returns a value for a given state configuration. It receives either a
@@ -251,7 +253,6 @@ class Tree:
 
         Args:
             states: list or tuple of states for each variable.
-            ignore_restraints: if set to true, restraints are ignored.
 
         Raises:
             ValueError: if incorrect states are provided. In particular if:
@@ -336,8 +337,7 @@ class Tree:
         else:  # Whenever node is not terminal
             var = node.name
             children = [
-                cls._product(child, cls._restrain(other, {var: i},
-                                                  inplace=False))
+                cls._product(child, cls._restrain(other, {var: i}))
                 for i, child in enumerate(node.children)
             ]
 
@@ -356,6 +356,14 @@ class Tree:
 
         return tree
 
+    def __mul__(self, other):
+        return self.product(other, inplace=False)
+    def __rmul__(self, other):
+        return other.product(self, inplace=False)
+    def __imul__(self, other):
+        return self.product(other, inplace=True)
+
+    
     @classmethod
     def _sum(cls, node, other):
         """ TODO: make special method for faster sum reduction"""
@@ -374,7 +382,7 @@ class Tree:
         else:  # Whenever node is not terminal
             var = node.name
             children = [
-                cls._sum(child, cls._restrain(other, {var: i}, inplace=False))
+                cls._sum(child, cls._restrain(other, {var: i}))
                 for i, child in enumerate(node.children)
             ]
 
@@ -388,12 +396,19 @@ class Tree:
 
         root = type(self)._sum(self.root, other.root)
         tree = type(self)(root=root,
-                          variables=variables,
+                          variables=self.variables.copy(),
                           cardinalities=self.cardinalities)
         if inplace:
             self = tree
 
         return tree
+
+    def __add__(self, other):
+        return self.sum(other, inplace=False)
+    def __radd__(self, other):
+        return other.sum(self, inplace=False)
+    def __iadd__(self, other):
+        return self.sum(other, inplace=True)
 
     @classmethod
     def _marginalize(cls, node: nodes.Node, variable: str):
@@ -405,7 +420,7 @@ class Tree:
                 return reduce(lambda a, b: a._sum(b), node.children)
             else:
                 children = [
-                    cls._restrain(child, restrictions)
+                    cls._marginalize(child, variable)
                     for child in node.children
                 ]
                 return nodes.BranchNode(node.name, children)
@@ -420,9 +435,6 @@ class Tree:
             self = tree
 
         return tree
-
-    def size(self):
-        return self.root.size()
 
     def SQEuclideanDistance(self, other: Tree) -> float:
         return sum((a.value - b.value)**2 for a, b in zip(self, other))

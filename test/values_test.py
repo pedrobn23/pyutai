@@ -92,6 +92,37 @@ class TreeTestCase(unittest.TestCase):
 
         tree4 = tree1.product(tree2)
 
+        self.assertEqual(tree4, tree3)
+
+    def test_sum(self):
+        card = {'A': 2, 'B': 2}
+
+        arrs = [np.array([[1, 2], [2, 3]]),
+                np.array([[4, 5], [0, 0]]),
+                np.array([[1, 1], [1,1]])]
+
+        trees = [values.Tree.from_array(arr, ['A', 'B'], card)
+                 for arr in arrs]
+                 
+        for zip1, zip2 in itertools.permutations(zip(arrs, trees), 2):
+            arr1, tree1 = zip1
+            arr2, tree2 = zip2
+            arr3 = arr1 + arr2
+            tree3 = tree1 + tree2
+            tree4 = tree2.sum(tree1)
+
+            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card), tree3)
+            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card), tree4)
+            
+                
+                
+
+
+
+    def test_marginalize(self):
+        pass
+
+        
 
 if __name__ == '__main__':
     unittest.main()
