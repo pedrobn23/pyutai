@@ -1,4 +1,5 @@
 """
+Cluster module implements k-meas cluster reduction of potentials. WIP at this moment.
 
 [1] Wang, Haizhou & Song, Mingzhou. (2011). Ckmeans.1d.dp: Optimal k-means Clustering in One Dimension by Dynamic Programming. The R Journal. 3. 29-33. 10.32614/RJ-2011-015. 
 """
@@ -63,16 +64,37 @@ class ClusterPotential:
     def from_tree(cls, tree):
         return cls.from_iterable(tree)
 
-    def _flatten_item(indexes : Dict[str, int]):
-        pass
+    
 
-    def _unflatten_item(index : int):
-        pass
+    @staticmethod
+    def _update_distance(cls, old_distance, old_medium, new_element_value, length):
+        if length == 0:
+            return 0, new_element
 
+    @classmethod
+    def _compute_minimum(cls, D, j, m):
+        minimum = math.inf
+        distance = 0
+        medium = 0
+        length = 0
+        index = j
 
+        for i in range(j,m,-1):
+            if (value := D[i-1, m-1] + d) > minimum:
+                minimum = value
+                index = i
 
+            distance, medium, length = cls._update_distance()
+            
+        
+    
     def reduce_cluster(self, goal):
 
+        # Access values in increasing order.
+        values =  list(clusters.keys())
+        elememts = [(index, value) for index in self.cluster[value] for value in values.sorted()]
+                
+        
         # Little to do
         if goal >= len(self.cluster):
             return self
@@ -85,9 +107,3 @@ class ClusterPotential:
             for m in range(1, goals):
                 for j in range(i,m-1, -1):     
                     D[i][m] = min(D[j - 1][m - 1] + self.eu_distance(j, i) for j in )
-
-
-if __name__ == '__main__':
-    clusters = {0.3: {1, 2, 3}, 0.25: {4, 5}, 0.2: {6, 7, 8, 0}}
-    cardinality = (9,)
-    pot = ClusterPotential(clusters=clusters, cardinality=cardinality)
