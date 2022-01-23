@@ -25,6 +25,20 @@ Typical usage example:
   tree.access({'C':1, 'B':2})
 ```
 
+## Test
+
+In the test folder we have scripts that implement test classes based on unittest. To run all unittest use:
+
+```
+python -m test
+```
+
+from this directory. If you only want to execute a particular test module, then run:
+
+```
+python -m test.my_module_name
+```
+
 ## Experimentals Results
 Work in progress.
 
