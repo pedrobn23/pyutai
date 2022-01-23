@@ -7,16 +7,8 @@ Initially it will contains the classes:
 - BranchNode: Class for non-terminal nodes. It contains a variable, as well as
     one child for each state of the variable.
 - LeafNode: Class for terminal nodes. It contains the associated value.
-
-Typical usage example:
-
-  # data is read from a numpy ndarray object
-  data = np.array(get_data())
-  tree = Tree.from_array(data)
-
-  # We can perform most of the operations over tree. For example:
-  tree.prune()
-  tree.access([state_configuration()])
+- MarkedNode: variation of BranchNodes with quicker comparison time, in exchange
+    of more memory usage.
 """
 
 import abc
@@ -52,33 +44,44 @@ class Node(abc.ABC):
     def __eq__(self, other):
         pass
 
-    # have to include memo
     @abc.abstractmethod
     def __deepcopy__(self, memo):
         pass
 
-    # deberíamos memorizarla?
     @abc.abstractmethod
     def size(self):
-        """size is the number of nodes that lives under the root.
+        """Number of nodes that lives under the root.
         """
 
 
-# should I make hashing nodes.
 class BranchNode(Node):
     """BranchNode is a node that has children.
 
-    A branch node is characterized by not being terminal. As we deal
-    with value-tree, each branch node has to be associated with a
-    variable, and have a children for every state possible for the
-    variable.
+    A branch node is characterized by not being terminal. Each
+    BranchNode has to be associated with a variable, and have a
+    children for every state possible for the variable.
+
+    To be used within the contex of a Tree.
 
     Attributes:
-        name (int): Name of the variable associated with the node.
-        children (List[Node]): each of the node associated with each state of variable name.
+        name: Name of the variable associated with the node.
+        children: list of childs. All nodes are associated with the
+          with a state of variable <name>.
+
+    Example:
+        from pyutai import 
+        
+        # We want to repesent a simple variable "AB" with two states.
+
+        name = 'AB'
+        children = [LeafNode(0.2), LeafNode(0.8)] 
+        node = pyutai.nodes.BranchNode(name, children)
+
+        # To get the tree that progress from setting 
+        node.children[0]
     """
 
-    def __init__(self, name: int, children: List[Node]):
+    def __init__(self, name: str, children: List[Node]):
         """Initializes BranchNode
 
         checks that the name is a non-negative value and initializes the node.
@@ -115,11 +118,11 @@ class BranchNode(Node):
 
         return False
 
-    # have to include memo
+    # TODO: include memo
     def __deepcopy__(self, memo):
         return type(self)(self.name, copy.deepcopy(self.children))
 
-    # deberíamos memorizarla?
+    # TODO: experiment about meoization of this parameter?
     def size(self):
         """size is the number of nodes that lives under the root."""
         return sum(child.size() for child in self.children) + 1
@@ -132,7 +135,7 @@ class LeafNode(Node):
     It only contains a value.
 
     Attributes:
-        value (float): value of the node.
+        value: value of the node.
     """
 
     def __init__(self, value: float):
@@ -157,7 +160,7 @@ class LeafNode(Node):
 
         return False
 
-    # have to include memo
+    # TODO: include memo
     def __deepcopy__(self, memo):
         return type(self)(self.value)
 
@@ -180,14 +183,15 @@ class MarkedNode(BranchNode):
 
     @staticmethod
     def _mark(node: Node):
+        """Aux method to use in recursion to deduce mark value."""
         if node.is_terminal():
             return np.uintc(value)
         if node is type(self):
             return node.mark
         return 0
 
-    def __init__(self, name: int, children: List[Node], *, mark: int = None):
-        """Initializes BranchNode
+    def __init__(self, name: str, children: List[Node], *, mark: int = None):
+        """Initializes MarkedNode
 
         checks that the variable is a non-negative value and assign
 
@@ -195,9 +199,6 @@ class MarkedNode(BranchNode):
             name: Name of the variable associated with the node. It should be non-negative.
             children: Each of the nodes associated with each state of variable name.
                 It should be non-negative.
-
-        Raises:
-            ValueError: Whenever name is negative of children is empty.
         """
 
         super().__init__(name, children)
@@ -212,6 +213,6 @@ class MarkedNode(BranchNode):
 
         return super().__eq__(other)
 
-    # have to include memo
+    # TODO: include memo
     def __deepcopy__(self, memo):
         t = type(self)(self.name, copy.deepcopy(self.children), self.mark)

@@ -54,19 +54,19 @@ class TreeTestCase(unittest.TestCase):
             for element in tree:
                 self.assertEqual(data_accessor(element.state), element.value)
 
-    def test_restraint(self):
+    def test_restrict(self):
         for arr, tree, variables in zip(self.arrays, self.trees,
                                         self.variables):
-            if arr.shape[0] > 1:  # otherwise there is little to restrain
-                restrained_tree = tree.restrain({'A': 0})
+            if arr.shape[0] > 1:  # otherwise there is little to restrict
+                restricted_tree = tree.restrict({'A': 0})
 
                 state = {var: self.cardinalities[var] - 1 for var in variables}
-                restrained_state = [
+                restricted_state = [
                     self.cardinalities[var] - 1 for var in variables
                 ]
-                restrained_state[0] = 0
-                self.assertEqual(arr[tuple(restrained_state)],
-                                 restrained_tree.access(state))
+                restricted_state[0] = 0
+                self.assertEqual(arr[tuple(restricted_state)],
+                                 restricted_tree.access(state))
 
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
@@ -97,13 +97,14 @@ class TreeTestCase(unittest.TestCase):
     def test_sum(self):
         card = {'A': 2, 'B': 2}
 
-        arrs = [np.array([[1, 2], [2, 3]]),
-                np.array([[4, 5], [0, 0]]),
-                np.array([[1, 1], [1,1]])]
+        arrs = [
+            np.array([[1, 2], [2, 3]]),
+            np.array([[4, 5], [0, 0]]),
+            np.array([[1, 1], [1, 1]])
+        ]
 
-        trees = [values.Tree.from_array(arr, ['A', 'B'], card)
-                 for arr in arrs]
-                 
+        trees = [values.Tree.from_array(arr, ['A', 'B'], card) for arr in arrs]
+
         for zip1, zip2 in itertools.permutations(zip(arrs, trees), 2):
             arr1, tree1 = zip1
             arr2, tree2 = zip2
@@ -111,18 +112,14 @@ class TreeTestCase(unittest.TestCase):
             tree3 = tree1 + tree2
             tree4 = tree2.sum(tree1)
 
-            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card), tree3)
-            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card), tree4)
-            
-                
-                
-
-
+            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card),
+                             tree3)
+            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card),
+                             tree4)
 
     def test_marginalize(self):
         pass
 
-        
 
 if __name__ == '__main__':
     unittest.main()
