@@ -9,11 +9,14 @@ Typical usage example:
 
   # data is read from a numpy ndarray object
   data = np.array(get_data())
-  tree = Tree.from_array(data)
+  variables = ['A', 'B', 'C']
+  cardinality= {'A':4, 'B':3, 'C':3}
+
+  tree = Tree.from_array(data, variables, cardinality)
 
   # We can perform most of the operations over tree. For example:
   tree.prune()
-  tree.access([state_configuration()])
+  tree.access({'C':1, 'B':2})
  """
 from __future__ import annotations
 
@@ -201,6 +204,7 @@ class Tree:
         return type(self)(root=copy.deepcopy(self.root),
                           variables=self.variables.copy(),
                           cardinalities=self.cardinalities)
+
     def size(self):
         """Number of nodes contained in the tree. May varies upon pruning."""
         return self.root.size()
@@ -357,12 +361,13 @@ class Tree:
 
     def __mul__(self, other):
         return self.product(other, inplace=False)
+
     def __rmul__(self, other):
         return other.product(self, inplace=False)
+
     def __imul__(self, other):
         return self.product(other, inplace=True)
 
-    
     @classmethod
     def _sum(cls, node, other):
         """ TODO: make special method for faster sum reduction"""
@@ -404,8 +409,10 @@ class Tree:
 
     def __add__(self, other):
         return self.sum(other, inplace=False)
+
     def __radd__(self, other):
         return other.sum(self, inplace=False)
+
     def __iadd__(self, other):
         return self.sum(other, inplace=True)
 
@@ -419,8 +426,7 @@ class Tree:
                 return reduce(lambda a, b: a._sum(b), node.children)
             else:
                 children = [
-                    cls._marginalize(child, variable)
-                    for child in node.children
+                    cls._marginalize(child, variable) for child in node.children
                 ]
                 return nodes.BranchNode(node.name, children)
 
