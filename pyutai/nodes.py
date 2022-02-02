@@ -153,6 +153,16 @@ class LeafNode(Node):
         """is_terminal returns True, as leaf nodes are always terminal."""
         return True
 
+    # TODO: have to include memo
+    def __deepcopy__(self, memo):
+        return type(self)(self.value)
+
+    def copy(self):
+        return self.__deepcopy__({})
+    
+    def restrict(self, restrictions : Dict[str, int]):
+        return self.copy()
+    
     def __repr__(self) -> str:
         return f'{self.__class__}({self.value!r})'
 
@@ -162,9 +172,7 @@ class LeafNode(Node):
 
         return False
 
-    # have to include memo
-    def __deepcopy__(self, memo):
-        return type(self)(self.value)
+    
 
     def size(self):
         """size is the number of nodes that lives under the root."""
@@ -235,6 +243,20 @@ class TableNode(Node):
     def __deepcopy__(self, memo):
         return type(self)(values=copy.deepcopy(self.values),
                           variables=copy.deepcopy(self.variables))
+
+    def copy(self):
+        return self.__deepcopy__({})
+
+    def restrict(self, restrictions : Dict[str, int]):
+        #make ir copy
+        variables = tuple(slice(None) if var not in restrictions else restrictions[var]
+                          for var in self.variables)
+
+        self.values = self.values[variables]
+
+        for variable in self.variables:
+            if variable in restrictions:
+                self.variables.remove(variable)        
 
     def size(self):
         """size is the number of nodes that lives under the root. 

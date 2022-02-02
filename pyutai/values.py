@@ -75,7 +75,7 @@ class Tree:
     """
     root: nodes.Node
     variables: Set[str]
-    cardinalities: Dict[int, int] = dataclasses.field(default_factory=tuple)
+    cardinalities: Dict[str, int] 
 
     @classmethod
     def _from_callable(cls,
@@ -276,7 +276,7 @@ class Tree:
         #TODO: separate inplace and copy style
 
         if node.is_terminal():
-            return nodes.LeafNode(node.value)
+            return node.restrict(restrictions)
 
         else:
             if node.name in restrictions:
