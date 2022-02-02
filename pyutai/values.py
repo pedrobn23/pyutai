@@ -325,7 +325,7 @@ class Tree:
     def _product(cls, node, other):
 
         if node.is_terminal() and other.is_terminal():
-            return nodes.LeafNode(node.value * other.value)
+            return node * other
 
         elif node.is_terminal() and not other.is_terminal():
             # Special cases for fast product
@@ -368,12 +368,13 @@ class Tree:
     def __imul__(self, other):
         return self.product(other, inplace=True)
 
+    
     @classmethod
     def _sum(cls, node, other):
         """ TODO: make special method for faster sum reduction"""
 
         if node.is_terminal() and other.is_terminal():
-            return nodes.LeafNode(node.value + other.value)
+            return node + other
 
         elif node.is_terminal() and not other.is_terminal():
             # Special cases for fast sum
@@ -415,7 +416,7 @@ class Tree:
 
     def __iadd__(self, other):
         return self.sum(other, inplace=True)
-
+        
     @classmethod
     def _marginalize(cls, node: nodes.Node, variable: str):
         if node.is_terminal():

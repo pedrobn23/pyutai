@@ -42,6 +42,8 @@ class Node(abc.ABC):
 
         Non-terminal nodes should have a children attribute.
         Terminal nodes should have a value attribute.
+
+        Terminal nodes should have overloaded add and mul operators.
         """
 
     @abc.abstractmethod
@@ -72,6 +74,9 @@ class BranchNode(Node):
     with value-tree, each branch node has to be associated with a
     variable, and have a children for every state possible for the
     variable.
+
+    As branch trees are planned to be a lightweight as possible, they
+    have not overloaded basic add and product operators.
 
     Attributes:
         name (int): Name of the variable associated with the node.
@@ -165,6 +170,27 @@ class LeafNode(Node):
         """size is the number of nodes that lives under the root."""
         return 1
 
+    def __add__(self, other):
+        return type(self)(value = self.value + other.value )
+
+    def __radd__(self, other):
+        return type(self)(value = other.value + self.value )
+
+    def __iadd__(self, other):
+        self.value += other.value
+        return self
+        
+    def __mul__(self, other):
+        return type(self)(value = self.value * other.value )
+
+    def __rmul__(self, other):
+        print(other, self)
+        return type(self)(value = other.value * self.value )
+
+    def __imul__(self, other):
+        self.value = self.value * other.value
+        return self
+        
 
 class MarkedNode(BranchNode):
     """A MarkedNode is a BranchNode with a special mark stored.
