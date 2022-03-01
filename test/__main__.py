@@ -1,3 +1,21 @@
+"""
+Module that implements unittests cases for PyUTAI module.
+"""
+
+import os
+import unittest
+import sys
+
+
+def suite():
+    pattern = '*_test.py'
+    folder = os.path.dirname(__file__)
+    return unittest.TestLoader().discover(folder, pattern=pattern)
+
+
+if __name__ == '__main__':
+
+=======
 import unittest
 import sys
 
