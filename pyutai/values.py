@@ -5,17 +5,6 @@ implemented. It is based on the implementations done in pgmpy.DiscreteFactor.
 
 Initially it will contains the class Tree, that is a wrapper class for a tree root node.
 
-Typical usage example:
-
-  # data is read from a numpy ndarray object
-  data = np.array(get_data())
-  tree = Tree.from_array(data)
-
-  # We can perform most of the operations over tree. For example:
-  tree.prune()
-  tree.access([state_configuration()])
-
-
 The tree is used as an undrelying data structures to represent a Potential from a set of 
 finite random variables {X_1,...,X_n} to |R. Each variables is assumed to have a finite
 amount of states, represented as 0,...,n. 
@@ -23,6 +12,19 @@ amount of states, represented as 0,...,n.
 An IndexSelection stores the is a mapping from variables to states. Sometimes, it will be
 refered as a state_configuration.
 
+Typical usage example:
+
+  # data is read from a numpy ndarray object
+  data = np.array(get_data())
+  variables = ['A', 'B', 'C']
+  cardinality= {'A':4, 'B':3, 'C':3}
+
+  tree = Tree.from_array(data, variables, cardinality)
+
+  # We can perform most of the operations over tree. For example:
+  tree.prune()
+
+  tree.access([state_configuration()])
 """
 from __future__ import annotations
 
