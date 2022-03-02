@@ -9,10 +9,12 @@ import dataclasses
 import itertools
 import statistics
 
+from typing import Dict, Iterable, List
+
 import numpy as np
 
 from pyutai import values, distances, reductions
-from typing import Dict, Iterable, List
+
 
 
 @dataclasses.dataclass

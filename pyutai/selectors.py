@@ -1,6 +1,9 @@
 """Selector helper for Tree construction
 
 This module contains some functions that ease out custom var selection.
+
+
+TODO: Mutual information selector.
 """
 
 from typing import List, Callable
@@ -21,7 +24,7 @@ def _filter(data: np.ndarray, selections: values.IndexSelection,
         slice(None) if var not in selections else selections[var]
         for var in variables)
 
-    variables_ = [var for var in variables if not (var in previous_selections)]
+    variables_ = [var for var in variables if var not in selections]
 
     return data[filter_], variables_
 
@@ -29,7 +32,7 @@ def _filter(data: np.ndarray, selections: values.IndexSelection,
 def _restriction_iterator(data: np.ndarray, variable: int):
     cardinality = data.shape[variable]
     for state in range(cardinality):
-        filter_ = (slice(None) for _ in filtered_variables)
+        filter_ = (slice(None) for _ in data.shape)
         filter_[variable] = state
         yield data[filter_]
 

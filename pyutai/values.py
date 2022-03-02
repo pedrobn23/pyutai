@@ -5,9 +5,9 @@ implemented. It is based on the implementations done in pgmpy.DiscreteFactor.
 
 Initially it will contains the class Tree, that is a wrapper class for a tree root node.
 
-The tree is used as an undrelying data structures to represent a Potential from a set of 
+The tree is used as an undrelying data structures to represent a Potential from a set of
 finite random variables {X_1,...,X_n} to |R. Each variables is assumed to have a finite
-amount of states, represented as 0,...,n. 
+amount of states, represented as 0,...,n.
 
 An IndexSelection stores the is a mapping from variables to states. Sometimes, it will be
 refered as a state_configuration.
@@ -28,19 +28,16 @@ Typical usage example:
 """
 from __future__ import annotations
 
-import abc
-import collections
 import copy
 import dataclasses
 import itertools
-import math
-import logging
-import sys
+import functools
 
-from pyutai import nodes
-from typing import Callable, Dict, Iterable, List, Tuple
+from typing import Callable, Dict, List
 
 import numpy as np
+
+from pyutai import nodes
 
 IndexSelection = Dict[str, int]
 """IndexSelection is the type accepted by access method to retrieve a variable.
@@ -57,7 +54,7 @@ VarSelector = Callable[[Dict[str, int]], int]
 next at tree creation. It receives a  Dictionary with the variables that have
  already been assigned and select the next variable to explore.
 
-As dict are optimized for lookup, an str to int dict will be passed, with every 
+As dict are optimized for lookup, an str to int dict will be passed, with every
 string representing a number.
 """
 
@@ -65,7 +62,7 @@ string representing a number.
 @dataclasses.dataclass
 class Element:
     """
-    An element is a pair of a state of the variables of a potential, and the 
+    An element is a pair of a state of the variables of a potential, and the
     """
     state: IndexSelection
     value: float
@@ -73,7 +70,7 @@ class Element:
 
 @dataclasses.dataclass
 class Tree:
-    """Tree stores the value of a  potential over a tree. 
+    """Tree stores the value of a  potential over a tree.
 
     It encapsulates a root node from pyutai.nodes and perfomr most operations
     required between trees.
@@ -337,7 +334,7 @@ class Tree:
         See access for more information on states.
 
         Args:
-            restrictions: Mapping from variables to state to which 
+            restrictions: Mapping from variables to state to which
                 restrict them.
             inplace: If true, modifications will be made on the provided
                 tree. Otherwise, the operation will return a modified new
@@ -395,7 +392,7 @@ class Tree:
                 tree. Otherwise, the operation will return a modified new
                 tree.
 
-        Returns: 
+        Returns:
             Tree: Product tree.
         """
 
@@ -452,7 +449,7 @@ class Tree:
                 tree. Otherwise, the operation will return a modified new
                 tree.
 
-        Returns: 
+        Returns:
             Tree: sum tree.
         """
 
@@ -480,11 +477,11 @@ class Tree:
     @classmethod
     def _marginalize(cls, node: nodes.Node, variable: str):
         if node.is_terminal():
-            return nodes.LeafNode(node.value * self.cardinalities[variable])
+            return node.marginalize(variable, self.cardinalities)
 
         else:
             if node.name == variable:
-                return reduce(lambda a, b: a._sum(b), node.children)
+                return functools.reduce(cls._sum, node.children)
             else:
                 children = [
                     cls._marginalize(child, variable) for child in node.children
@@ -501,50 +498,51 @@ class Tree:
                 tree. Otherwise, the operation will return a modified new
                 tree.
 
-        Returns: 
+        Returns:
             Tree: Modified tree.
         """
 
-        root = type(self)._marginalize(self.root, other.root)
+        root = type(self)._marginalize(self.root, variable)
 
-        variables = set(variables)
+        variables = set(self.variables)
         variables.remove(variable)
 
         tree = type(self)(root=root,
                           variables=variables,
                           cardinalities=self.cardinalities)
         if inplace:
-            self = tree
+            self.root = tree.root
+            self.variables = tree.variables
 
         return tree
 
 
-def SQEuclideanDistance(tree: Tree, other: Tree) -> float:
+def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
     """Square Euclidean distance between two trees.
-    
+
     Provided trees are assumed to have the same variables.
 
-    Returns: 
+    Returns:
         float: distance.
     Raises:
         ValueError: If provided tree those not share variables.
     """
     if tree.variables != other.variables:
-        raise ValueError(f'Trees must share variables. Got:' +
+        raise ValueError('Trees must share variables. Got:' +
                          f'{tree.variables}, {other.variables}.')
     return sum((a.value - b.value)**2 for a, b in zip(tree, other))
 
 
-def KullbackDistance(tree: Tree, other: Tree):
+def kullback_distance(tree: Tree, other: Tree):
     """KullbackLeibler distance between two trees.
-    
+
     Provided trees are assumed to have the same variables.
 
-    Returns: 
+    Returns:
         float: distance.
     """
     if tree.variables != other.variables:
-        raise ValueError(f'Trees must share variables. Got:' +
+        raise ValueError('Trees must share variables. Got:' +
                          f'{tree.variables}, {other.variables}.')
 
     return sum(

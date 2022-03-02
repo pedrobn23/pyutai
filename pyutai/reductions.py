@@ -1,23 +1,22 @@
 """
 Reduction module implements k-meas cluster reduction of potentials. WIP at this moment.
 
-[1] Wang, Haizhou & Song, Mingzhou. (2011). Ckmeans.1d.dp: Optimal k-means Clustering in One Dimension by Dynamic Programming. The R Journal. 3. 29-33. 10.32614/RJ-2011-015. 
+[1] Wang, Haizhou & Song, Mingzhou. (2011). Ckmeans.1d.dp: Optimal k-means Clustering
+    in One Dimension by Dynamic Programming. The R Journal. 3. 29-33. 10.32614/RJ-2011-015.
 [2] PyUTAI group. (2022)  https://leo.ugr.es/emlpa/meetings/granada-24-25-1-22/pbonilla.pdf
 """
 
-import collections
-import dataclasses
-import itertools
 import math
-import numpy as np
-import statistics
+
+from typing import Callable, List
+
 import tqdm
+import numpy as np
 
 from pyutai import values, distances
-from typing import Callable, Dict, Iterable, List, Tuple
 
 
-def _select_best_option(element, cluster, errors, elements, distance):
+def _select_best_option(element, cluster, errors, distance):
     """Select the best options to distribute elements into cluster"""
     min_error = math.inf
     min_index = math.inf
@@ -44,7 +43,7 @@ def _cluster_list(indexes):
     start = 0
     end = int(elements_limit - 1)
 
-    for i in range(clusters_limit - 1):
+    for _ in range(clusters_limit - 1):
         start = int(indexes[end, clusters_left])
 
         clusters.append((start, end))
@@ -63,19 +62,19 @@ def optimal_cluster(elements: List[values.Element],
     """Generates a list of indices denoting optimal clustering.
 
     Receives a list of elements ordered by value, and return the indexes
-    of the optimal clustering. 
-    
+    of the optimal clustering.
+
 
     Example:
     TODO
     """
     if distance is None:
-        distance = distances._cuadratic(elements)
+        distance = distances.iterative_euclidean(elements)
 
     n_elements = len(elements)
     if clusters > n_elements:
         raise ValueError(f'Provided list has not enough elements {n_elements}' +
-                         f'to create {cluster} clusters')
+                         f'to create {clusters} clusters')
 
     errors = np.zeros(shape=(n_elements + 1, clusters + 1))
     indexes = np.zeros(shape=(n_elements + 1, clusters + 1))
@@ -113,10 +112,9 @@ def optimal_cluster(elements: List[values.Element],
             # General case
             else:
                 error, index = _select_best_option(element, cluster, errors,
-                                                   elements, distance)
+                                                   distance)
                 errors[element][cluster] = error
                 indexes[element][cluster] = index
 
     # final formating
-    cluster_list = _cluster_list(indexes)
-    return cluster_list
+    return _cluster_list(indexes)
