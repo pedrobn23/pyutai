@@ -86,7 +86,7 @@ class Tree:
     """
     root: nodes.Node
     variables: Set[str]
-    cardinalities: Dict[str, int] 
+    cardinalities: Dict[str, int]
 
     @classmethod
     def _from_callable(cls,

@@ -9,6 +9,9 @@ Initially it will contains the classes:
 - LeafNode: Class for terminal nodes. It contains the associated value.
 - MarkedNode: variation of BranchNodes with quicker comparison time, in exchange
     of more memory usage.
+
+References:
+[1]: https://github.com/pgmpy/pgmpy/blob/27e5e97e0c18666da800fe595839c1b80c5c8ee8/pgmpy/factors/discrete/DiscreteFactor.py#L610
 """
 
 import abc
@@ -162,10 +165,10 @@ class LeafNode(Node):
 
     def copy(self):
         return self.__deepcopy__({})
-    
-    def restrict(self, restrictions : Dict[str, int]):
+
+    def restrict(self, restrictions: Dict[str, int]):
         return self.copy()
-    
+
     def __repr__(self) -> str:
         return f'{self.__class__}({self.value!r})'
 
@@ -248,16 +251,16 @@ class TableNode(Node):
     def copy(self):
         return self.__deepcopy__({})
 
-    def restrict(self, restrictions : Dict[str, int]):
-        #make ir copy
-        variables = tuple(slice(None) if var not in restrictions else restrictions[var]
-                          for var in self.variables)
+    def restrict(self, restrictions: Dict[str, int]):
+        filter_ = tuple(
+            restrictions[var] if var in restrictions else slice(None)
+            for var in self.variables)
 
-        self.values = self.values[variables]
+        self.values = self.values[filter_]
 
         for variable in self.variables:
             if variable in restrictions:
-                self.variables.remove(variable)        
+                self.variables.remove(variable)
 
     def size(self):
         """size is the number of nodes that lives under the root. 
@@ -266,7 +269,7 @@ class TableNode(Node):
         return len(self.variables)
 
     @staticmethod
-    def _add_new_variables(node, other):
+    def _extend_new_variables(node, other):
         extra_vars = set(other.variables) - set(node.variables)
 
         slice_ = [slice(None)] * len(node.variables)
@@ -290,12 +293,10 @@ class TableNode(Node):
             self.variables = other.variables
 
     def _sum(self, other, *, inplace=False):
-        """Based on pgmpy sum method[1].
+        """Based on pgmpy sum method[1]."""
+        result = type(self)._extend_new_variables(self, other)
 
-        [1]: https://github.com/pgmpy/pgmpy/blob/27e5e97e0c18666da800fe595839c1b80c5c8ee8/pgmpy/factors/discrete/DiscreteFactor.py#L610"""
-        result = type(self)._add_new_variables(self, other)
-
-        other_values = type(self)._add_new_variables(other, self)
+        other_values = type(self)._extend_new_variables(other, self)
         other_values._rearrange_variables(result)
 
         result.values = result.values + other_values.values
@@ -306,12 +307,10 @@ class TableNode(Node):
         return result
 
     def _product(self, other, *, inplace=False):
-        """Based on pgmpy sum method[1].
+        """Based on pgmpy sum method[1]."""
+        result = type(self)._extend_new_variables(self, other)
 
-        [1]: https://github.com/pgmpy/pgmpy/blob/27e5e97e0c18666da800fe595839c1b80c5c8ee8/pgmpy/factors/discrete/DiscreteFactor.py#L610"""
-        result = type(self)._add_new_variables(self, other)
-
-        other_values = type(self)._add_new_variables(other, self)
+        other_values = type(self)._extend_new_variables(other, self)
         other_values._rearrange_variables(result)
 
         result.values = result.values * other_values.values

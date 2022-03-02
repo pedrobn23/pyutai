@@ -109,8 +109,7 @@ def _kullback_step():
             error = element.value * math.log(element.value / new_median)
 
         elif median != 0 and element.value == 0:
-            error += total_weight * math.log(
-                median / new_median)
+            error += total_weight * math.log(median / new_median)
 
         else:
             error += total_weight * math.log(
@@ -140,7 +139,7 @@ def _iterative(elements, _step):
                                               len(elements)):
             distances[(start, stop)] = cluster_error(element)
 
-    def closure(start : int, stop: int):
+    def closure(start: int, stop: int):
         """Return the error of a cluster from elements start to stop.
 
         closure(i,j) is equal to distance(elemenst[i,j], [mean]*(j-1)).
@@ -148,7 +147,9 @@ def _iterative(elements, _step):
         return a memoized distance.
         """
         return distances[start, stop - 1]
+
     return closure
+
 
 def iterative_euclidean(elements):
     """Return the error of a cluster from elements start to stop.
