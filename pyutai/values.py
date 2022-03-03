@@ -108,6 +108,7 @@ class Tree:
 
         else:
             next_var = selector(assigned_vars)
+            #print(next_var)
             n_children = cardinalities[next_var]
 
             # Tail recursion propagation

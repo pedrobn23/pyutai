@@ -32,8 +32,9 @@ def _filter(data: np.ndarray, selections: values.IndexSelection,
 def _restriction_iterator(data: np.ndarray, variable: int):
     cardinality = data.shape[variable]
     for state in range(cardinality):
-        filter_ = tuple(slice(None) if var != variable else state
-                   for var, _ in enumerate(data.shape))
+        filter_ = tuple(
+            slice(None) if var != variable else state
+            for var, _ in enumerate(data.shape))
         yield data[filter_]
 
 
@@ -53,13 +54,7 @@ def minimal_selector(data: np.ndarray,
         filtered_data, filtered_variables = _filter(data, previous_selections,
                                                     variables)
 
-        results = []
-        for variable, _ in enumerate(filtered_variables):
-            error = sum(
-                _evaluator(data_)
-                for data_ in _restriction_iterator(filtered_data, variable))
-            results.append(error)
-
+        results = [_evaluator(filtered_data, variable) for variable, _ in enumerate(filtered_variables)]
         return filtered_variables[np.argmin(results)]
 
     return variable_selector
@@ -68,12 +63,16 @@ def minimal_selector(data: np.ndarray,
 def variance(data: np.ndarray, variables: List[str]):
     """Generates a VarSelector based on the minimum entropy principle."""
 
-    _variance = lambda data: data.var()
-    return minimal_selector(data, variables, _variance, normalize=False)
+    def variance_(data, variable):
+        return sum(restricted_data.var()**2
+                   for restricted_data in _restriction_iterator(data, variable))
+    return minimal_selector(data, variables, variance_, normalize=False)
 
 
 def entropy(data: np.ndarray, variables: List[str]):
     """Return a new VarSelector based on the minimun entropy principle."""
 
-    _entropy = lambda data: stats.entropy(data.flatten())
-    return minimal_selector(data, variables, _entropy, normalize=True)
+    def entropy_(data, variable):
+        return sum(stats.entropy(data.flatten())
+                   for restricted_data in _restriction_iterator(data, variable))  
+    return minimal_selector(data, variables, entropy_, normalize=True)

@@ -223,7 +223,9 @@ class TableNode(Node):
         """Initializes LeafNode.
 
         Args:
-            value: value to be stored.
+            value: array with values to be stored.
+            variables: list of the name of stored variables. Variables names is assumed to 
+                be stored 
          """
         super().__init__()
 

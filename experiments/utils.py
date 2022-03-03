@@ -1,3 +1,8 @@
+import numpy as np
+
+from pyutai import values
+
+
 def cpd_size(cpd):
     return np.prod(cpd.cardinality)
 

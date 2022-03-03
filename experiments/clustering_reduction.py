@@ -1,97 +1,100 @@
 """Cluster Experiment create an enviroment to test cluster reduction
 capabilities on real datasets.
 """
-import numpy as np
+import collections
 import os
 import statistics
 
-from pyutai import read, cluster, values, selectors
+import numpy as np
+
 from experiments import utils, networks
+from pyutai import read, cluster, values, selectors
+
+# def _cluster_experiment(test_set):
+#     differences = []
+
+#     for cpd in test_set:
+#         tree = utils.tree_from_cpd(cpd)
+#         variables = cpd.variables
+#         cluster_ = cluster.Potential.from_tree(tree)
+#         length = len(cluster_.clusters)
+
+#         if length > 1:
+#             print('\n ------ \n')
+#             print(f'Prior cluster size: {length}.')
+#             print(f'Tree prior unpruned: {tree.size()}.')
+
+#             tree.prune()
+#             tree1size = tree.size()
+#             print(f'Tree prior pruned: {tree1size}.')
+
+#             reduced_cluster = cluster_.reduce_cluster(length // 2)
+#             reduced_length = len(reduced_cluster.clusters)
+#             print(f'Post cluster size: {reduced_length}.')
+
+#             tree2 = utils.tree_from_cluster(reduced_cluster, variables,
+#                                        selectors.variance)
+#             tree2.prune()
+#             tree2size = tree2.size()
+
+#             print(f'Tree post pruned: {tree2size}.')
+#             print(f'    - diference: {tree1size - tree2size}.')
+
+#             differences.append(tree1size - tree2size)
+
+#     print(statistics.mean(differences))
 
 
+def _pruning_experiments(countered_cpds):
 
-def _tree_from_cluster(cluster_, variables):
-    return values.Tree.from_callable(data=cluster_.access,
-                                     variables=variables,
-                                     cardinalities=cluster_.cardinalities)
+    total_prunning = collections.defaultdict(int)
+    fault_examples = []
+    for counter, cpd in countered_cpds:
+        current_prunning = {}
 
-
-def _cluster_experiment(test_set):
-    differences = []
-
-    for cpd in test_set:
-        tree = _tree_from_cpd(cpd)
-        variables = cpd.variables
-        cluster_ = cluster.Potential.from_tree(tree)
-        length = len(cluster_.clusters)
-
-        if length > 1:
-            print('\n ------ \n')
-            print(f'Prior cluster size: {length}.')
-            print(f'Tree prior unpruned: {tree.size()}.')
-
-            tree.prune()
-            tree1size = tree.size()
-            print(f'Tree prior pruned: {tree1size}.')
-
-            reduced_cluster = cluster_.reduce_cluster(length // 2)
-            reduced_length = len(reduced_cluster.clusters)
-            print(f'Post cluster size: {reduced_length}.')
-
-            tree2 = _tree_from_cluster(reduced_cluster, variables,
-                                       selectors.variance)
-            tree2.prune()
-            tree2size = tree2.size()
-
-            print(f'Tree post pruned: {tree2size}.')
-            print(f'    - diference: {tree1size - tree2size}.')
-
-            differences.append(tree1size - tree2size)
-
-    print(statistics.mean(differences))
-
-
-def _pruning_experiments(path):
-    for selector in [
-            None, selectors.variance, selectors.entropy
-    ]:
-        total_pruning = 0
-        test_set = _all_cpds(path)
-        for cpd in test_set:
-            tree = _tree_from_cpd(cpd, selector)
+        for selector_name, selector in [('None', None),
+                                        ('variance', selectors.variance),
+                                        ('entropy', selectors.entropy)]:
+            tree = utils.tree_from_cpd(cpd, selector)
             size = tree.size()
 
             tree.prune()
 
             size_pruned = tree.size()
 
-            total_pruning += size - size_pruned
+            total_prunning[selector_name] += size - size_pruned
+            current_prunning[selector_name] = size - size_pruned
 
-        print(
-            f'With selector {selector} we achieve and improvement of {total_pruning} less nodes.'
-        )
+        if current_prunning['None'] > current_prunning['entropy']:
+            fault_examples.append((counter, current_prunning))
+        print(f'In cpd: {counter}:\n   {current_prunning}.')
+    print(total_prunning)
+    print(fault_examples)
+    print(len(fault_examples))
 
 
-def _mono_pruning_experiment(cpd):
-    for selector in [
-            None, selectors.variance, selectors.entropy
-    ]:
-        total_pruning = 0
+if __name__ == '__main__':
+    # _pruning_experiments(networks.smalls())
+    fault_examples = [
+        4, 11, 13, 23, 27, 32, 33, 54, 59, 61, 66, 70, 72, 74, 77, 78, 79, 80,
+        81, 82, 83, 86, 87, 88, 92, 94, 98, 100, 102, 103, 104, 105, 106, 107,
+        109, 110, 114, 131, 137, 139, 142, 144, 146, 156, 158, 161, 166, 172,
+        190, 193, 194, 197, 210, 212, 217, 226, 227, 228, 232, 233, 236, 238,
+        241, 244
+    ]
 
-        tree = _tree_from_cpd(cpd, selector)
+
+    cpd = networks.small_selector(233)
+    print(utils.unique_values(cpd))
+    print(cpd.values.shape)
+    for selector_name, selector in [('None', None),
+                                    ('variance', selectors.variance),
+                                    ('entropy', selectors.entropy)]:
+        tree = utils.tree_from_cpd(cpd, selector)
         size = tree.size()
 
         tree.prune()
 
         size_pruned = tree.size()
 
-        total_pruning += size - size_pruned
-
-        print(
-            f'With selector {selector} we achieve and improvement of {total_pruning} less nodes.'
-        )
-
-
-if __name__ == '__main__':
-
-    _pruning_experiments('networks')
+        print(selector_name, size, size_pruned)
