@@ -16,7 +16,6 @@ import numpy as np
 from pyutai import values, distances, reductions
 
 
-
 @dataclasses.dataclass
 class Potential:
     """cluster.Potential defines a cluster-based potential.

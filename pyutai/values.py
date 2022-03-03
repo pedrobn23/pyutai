@@ -479,7 +479,9 @@ class Tree:
         if node.is_terminal():
             return node.marginalize(variable, self.cardinalities)
 
-        cls._sum, node.children)
+        else:
+            if node.name == variable:
+                return functools.reduce(cls._sum, node.children)
             else:
                 children = [
                     cls._marginalize(child, variable) for child in node.children

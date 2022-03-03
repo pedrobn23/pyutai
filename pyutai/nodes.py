@@ -276,12 +276,10 @@ class TableNode(Node):
 
         # Otherwise, find the axis and sum it.
         node = self.copy()
-        node.values = node.values.sum(node.variables.index(variable)) 
+        node.values = node.values.sum(node.variables.index(variable))
         node.variables.remove(variable)
 
         return node
-
-            
 
     def size(self):
         """size is the number of nodes that lives under the root.
@@ -408,4 +406,6 @@ class MarkedNode(BranchNode):
 
     # TODO: include memo
     def __deepcopy__(self, memo):
-        return type(self)(self.name, copy.deepcopy(self.children), mark=self.mark)
+        return type(self)(self.name,
+                          copy.deepcopy(self.children),
+                          mark=self.mark)

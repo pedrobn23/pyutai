@@ -32,8 +32,8 @@ def _filter(data: np.ndarray, selections: values.IndexSelection,
 def _restriction_iterator(data: np.ndarray, variable: int):
     cardinality = data.shape[variable]
     for state in range(cardinality):
-        filter_ = (slice(None) for _ in data.shape)
-        filter_[variable] = state
+        filter_ = tuple(slice(None) if var != variable else state
+                   for var, _ in enumerate(data.shape))
         yield data[filter_]
 
 
@@ -54,7 +54,7 @@ def minimal_selector(data: np.ndarray,
                                                     variables)
 
         results = []
-        for variable in filtered_variables:
+        for variable, _ in enumerate(filtered_variables):
             error = sum(
                 _evaluator(data_)
                 for data_ in _restriction_iterator(filtered_data, variable))
