@@ -6,3 +6,8 @@
  - Reorganización de los archivos: Nueva carpeta experiments.
  - Experimentos de clustering optimal retrasados hasta que organice como se van a construir los árboles.
  - TableNodes finalizados.
+
+
+## TODO
+- Aumentar la cantidad de unittesting.
+- Comprobar si el funcionamiento de los selectores es el adecuado.
