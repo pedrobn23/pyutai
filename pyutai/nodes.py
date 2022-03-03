@@ -164,6 +164,9 @@ class LeafNode(Node):
         """Return a hard copy of the node"""
         return self.__deepcopy__({})
 
+    def access(self, states : Dict[str, int]):
+        return node.value
+    
     def restrict(self, _: Dict[str, int]):
         """Restrict variables to provided values.
 
@@ -258,19 +261,28 @@ class TableNode(Node):
         """Return a hard copy of the node"""
         return self.__deepcopy__({})
 
+
+    def access(self, states : Dict[str, int]):
+        filter_ = tuple(states[var] for var in self.variables)
+        return self.values[filter_]
+        
     def restrict(self, restrictions: Dict[str, int]):
         """Restrict variables to provided values"""
+        node = self.copy()
+
         filter_ = tuple(
             restrictions[var] if var in restrictions else slice(None)
             for var in self.variables)
 
-        self.values = self.values[filter_]
+        node.values = self.values[filter_]
 
         for variable in self.variables:
             if variable in restrictions:
-                self.variables.remove(variable)
+                node.variables.remove(variable)
 
-    # TODO: make inplace option
+        return node
+    
+    # TODO: Important, make inplace option
     def marginalize(self, variable, cardinalities):
         # If variable is not pressent
         if variable not in self.variables:

@@ -115,7 +115,7 @@ class Tree:
             children = []
             for i in range(n_children):
                 new_assigned_vars = dict(assigned_vars, **{next_var: i})
-                child = Tree._from_callable(data=data,
+                child = cls._from_callable(data=data,
                                             variables=variables,
                                             cardinalities=cardinalities,
                                             assigned_vars=new_assigned_vars,
@@ -146,7 +146,7 @@ class Tree:
             selector (optional): Var selector to create each node of the tree. See
                 See VarSelector type for more information.
         """
-        root = Tree._from_callable(data=data,
+        root = cls._from_callable(data=data,
                                    variables=variables,
                                    cardinalities=cardinalities,
                                    assigned_vars={},
@@ -272,7 +272,7 @@ class Tree:
             state = states[var]
             node = node.children[state]
 
-        return node.value
+        return node.access(states)
 
     def access(self, states: IndexSelection) -> float:
         """Value associated with a given series of states.
@@ -518,6 +518,116 @@ class Tree:
         return tree
 
 
+class TableTree(Tree):
+    @staticmethod
+    def restrict_table(data: np.ndarray, variables : List[str], assigned: Dict[str, int]):
+        """Restrict variables to provided values"""
+
+        filter_ = tuple(
+            assigned[var] if var in assigned else slice(None)
+            for var in variables)
+
+        new_data = data[filter_]
+
+        new_variables = [var for var in variables if var not in assigned]
+
+        return new_data, new_variables
+    
+    
+    
+    @classmethod
+    def _from_array(cls,
+                    data: np.ndarray,
+                    variables: List[str],
+                    cardinalities: Dict[str, int],
+                    assigned_vars: Dict[str, int],
+                    *,
+                    table_size : int = 5,
+                    selector: VarSelector = None) -> nodes.Node:
+        """Auxiliar function for tail recursion in from_callable method.
+
+        As it uses tail recursion, it may generate stack overflow for big trees.
+        data_shape is changed from Tuple to list to avoid copying it multiple times,
+        due to the immutability of tuples."""
+
+        if selector is None:
+            selector = lambda assigned_vars: variables[len(assigned_vars)]
+
+        # If every variable is already selected
+        if len(variables) >= len(assigned_vars)-table_size:
+            node_values, node_variables = cls.restrict_table(data, variables, assigned_vars) 
+            return nodes.TableNode(node_values, node_variables)
+
+        else:
+            next_var = selector(assigned_vars)
+            #print(next_var)
+            n_children = cardinalities[next_var]
+
+            # Tail recursion propagation
+            children = []
+            for i in range(n_children):
+                new_assigned_vars = dict(assigned_vars, **{next_var: i})
+                child = cls._from_callable(data=data,
+                                            variables=variables,
+                                            cardinalities=cardinalities,
+                                            assigned_vars=new_assigned_vars,
+                                            selector=selector)
+                children.append(child)
+
+            return nodes.BranchNode(next_var, children)
+
+    @classmethod
+    def from_array(cls,
+                   data: np.ndarray,
+                   variables: List[str],
+                   cardinalities: Dict[str, int],
+                   *,
+                   selector: Callable[[Dict[int, int]], int] = None):
+        """Create a Tree from a numpy.ndarray.
+
+        Read a potential from a given np.ndarray, and store it in a value tree.
+        It does not returns a prune tree. Consider pruning the tree after creation.
+        Variables are named 0,...,len(data)-1, and as such will be referred for
+        operations like restricting and accessing.
+
+        Args:
+            data: table-valued potential.
+            variables: list with the name of the variables.
+            cardinalities: mapping from the variable names to its number of states.
+            selector (optional): Var selector to create each node of the tree. See
+                See VarSelector type for more information.
+
+        Raises:
+            ValueError: is provided with an empty table, or if Array and cardinalities
+                does not match.
+        """
+        if data.size == 0:
+            raise ValueError('Array should be non-empty')
+
+        if len(data.shape) != len(variables):
+            raise ValueError(f'Array shape does not match number of variables' +
+                             f'provided.\nArray shape: {data}, ' +
+                             f'variables: {variables}.')
+
+        for index, var in enumerate(variables):
+            if data.shape[index] != cardinalities[var]:
+                raise ValueError(
+                    'Array shape must match cardinalities; In variable ' +
+                    f'{var}: received cardinality {cardinalities[var]},' +
+                    f'in array {data.shape[index]}.')
+
+
+        root = cls._from_array(data=data,
+                                variables=variables,
+                                cardinalities=cardinalities,
+                                assigned_vars={},
+                                selector=selector)
+        return cls(root=root,
+                   variables=set(variables),
+                   cardinalities=cardinalities)
+
+
+    
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
     """Square Euclidean distance between two trees.
 
@@ -546,5 +656,4 @@ def kullback_distance(tree: Tree, other: Tree):
         raise ValueError('Trees must share variables. Got:' +
                          f'{tree.variables}, {other.variables}.')
 
-    return sum(
-        (a.value * (np.log(a.value - b.value)) for a, b in zip(tree, other)))
+    return sum(a.value * (np.log(a.value - b.value)) for a, b in zip(tree, other))
