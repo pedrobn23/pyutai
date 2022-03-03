@@ -1,5 +1,5 @@
 """Cluster Experiment create an enviroment to test cluster reduction
-capabilities on
+capabilities on real datasets.
 """
 import numpy as np
 import os
@@ -80,8 +80,8 @@ def _small_cpds(path):
     test_set = []
     for net in os.listdir(path):
         if net.endswith('.bif'):
-            f = read.read(f'networks/{net}')
-            model = f.get_model()
+            file_ = read.read(f'networks/{net}')
+            model = file_.get_model()
             cpds = model.get_cpds()
             test_set += _select_small(cpds)
 
@@ -91,11 +91,10 @@ def _small_cpds(path):
 
 
 def _all_cpds(path):
-    test_set = []
     for net in os.listdir(path):
         if net.endswith('.bif'):
-            f = read.read(f'networks/{net}')
-            model = f.get_model()
+            file_ = read.read(f'networks/{net}')
+            model = file_.get_model()
             cpds = model.get_cpds()
             for cpd in cpds:
                 yield cpd
@@ -114,20 +113,20 @@ def _cluster_experiment(test_set):
         tree = _tree_from_cpd(cpd)
         variables = cpd.variables
         cluster_ = cluster.Potential.from_tree(tree)
-        l = len(cluster_.clusters)
+        length = len(cluster_.clusters)
 
-        if l > 1:
-            print(f'\n ------ \n')
-            print(f'Prior cluster size: {l}.')
+        if length > 1:
+            print('\n ------ \n')
+            print(f'Prior cluster size: {length}.')
             print(f'Tree prior unpruned: {tree.size()}.')
 
             tree.prune()
             tree1size = tree.size()
             print(f'Tree prior pruned: {tree1size}.')
 
-            reduced_cluster = cluster_.reduce_cluster(l // 2)
-            l2 = len(reduced_cluster.clusters)
-            print(f'Post cluster size: {l2}.')
+            reduced_cluster = cluster_.reduce_cluster(length // 2)
+            reduced_length = len(reduced_cluster.clusters)
+            print(f'Post cluster size: {reduced_length}.')
 
             tree2 = _tree_from_cluster(reduced_cluster, variables,
                                        selectors.variance)
@@ -144,8 +143,7 @@ def _cluster_experiment(test_set):
 
 def _pruning_experiments(path):
     for selector in [
-            None, selectors.variance, selectors.mutual_information,
-            selectors.entropy
+            None, selectors.variance, selectors.entropy
     ]:
         total_pruning = 0
         test_set = _all_cpds(path)
@@ -166,8 +164,7 @@ def _pruning_experiments(path):
 
 def _mono_pruning_experiment(cpd):
     for selector in [
-            None, selectors.variance, selectors.mutual_information,
-            selectors.entropy
+            None, selectors.variance, selectors.entropy
     ]:
         total_pruning = 0
 
