@@ -236,6 +236,15 @@ class Tree:
                           variables=self.variables.copy(),
                           cardinalities=self.cardinalities)
 
+    def copy(self):
+        """Deepcopy the provided tree. Beaware that cardinalities is assumed to be shared
+        globaly within all trees, so it is not copied.
+
+        Returns:
+            Tree: deepcopy of the tree.
+        """
+        return self.__deepcopy__({})
+    
     def size(self):
         """Number of nodes contained in the tree. May varies upon pruning.
 
@@ -580,7 +589,6 @@ class TableTree(Tree):
     def from_array(cls,
                    data: np.ndarray,
                    variables: List[str],
-                   cardinalities: Dict[str, int],
                    *,
                    selector: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
@@ -609,13 +617,7 @@ class TableTree(Tree):
                              f'provided.\nArray shape: {data}, ' +
                              f'variables: {variables}.')
 
-        for index, var in enumerate(variables):
-            if data.shape[index] != cardinalities[var]:
-                raise ValueError(
-                    'Array shape must match cardinalities; In variable ' +
-                    f'{var}: received cardinality {cardinalities[var]},' +
-                    f'in array {data.shape[index]}.')
-
+        cardinalities = dict(zip(variables, data.shape))
 
         root = cls._from_array(data=data,
                                 variables=variables,
