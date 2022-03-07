@@ -32,6 +32,7 @@ import copy
 import dataclasses
 import itertools
 import functools
+import warnings
 
 from typing import Callable, Dict, List
 
@@ -212,19 +213,33 @@ class Tree:
         Returns:
             Element: with the configuration of states variables and the associated value.
         """
-
-        # We order the variables to ensure consistent iteration.
+        # Variables are ordered to ensure consistent iteration.
         variables = list(self.variables)
         variables.sort()
 
-        for states in itertools.product(
-                *[range(self.cardinalities[var]) for var in self.variables]):
-            indexes = {
-                variable: state
-                for variable, state in zip(self.variables, states)
-            }
+        shape = tuple(self.cardinalities[var] for var in variables)
+        print('en __iter__: variables', variables, 'shape', shape)
+        print('variables', variables, 'shape', shape)
+        
+        for states in np.ndindex(shape):
+            indexes = dict(zip(variables, states))
             yield Element(indexes, self.access(indexes))
 
+
+    def array(self):
+        variables = list(self.variables)
+        variables.sort()
+
+        shape = tuple(self.cardinalities[var] for var in variables)
+        result = np.zeros(shape)
+        
+        for states in np.ndindex(shape):
+            indexes = dict(zip(self.variables, states))            
+            result[states] = self.access(indexes)
+
+        return result
+        
+            
     def __deepcopy__(self, memo):
         """Deepcopy the provided tree. Beaware that cardinalities is assumed to be shared
         globaly within all trees, so it is not copied.
@@ -405,7 +420,9 @@ class Tree:
         Returns:
             Tree: Product tree.
         """
+        # TODO: incluir producto por entero y flotante.
 
+        
         root = type(self)._product(self.root, other.root)
         variables = self.variables.union(other.variables)
         tree = type(self)(root=root,
@@ -526,6 +543,28 @@ class Tree:
 
         return tree
 
+    def __eq__(self, other):
+        warnings.warn('This method perform value-wise comprasion, this being a'+
+                      'potentially highly inefficient method [O(n^2)].')
+
+        if not isinstance(other, type(self)):
+            return False
+
+        if other.variables != self.variables:
+            return False
+
+        for variable in self.variables:
+            if self.cardinalities[variable] != other.cardinalities[variable]:
+                return False
+
+        for element in self:
+            if other.access(element.state) != element.value:
+                return False
+
+        return True
+
+
+        
 
 class TableTree(Tree):
     @staticmethod
@@ -627,7 +666,6 @@ class TableTree(Tree):
         return cls(root=root,
                    variables=set(variables),
                    cardinalities=cardinalities)
-
 
     
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
