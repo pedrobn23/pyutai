@@ -218,8 +218,6 @@ class Tree:
         variables.sort()
 
         shape = tuple(self.cardinalities[var] for var in variables)
-        print('en __iter__: variables', variables, 'shape', shape)
-        print('variables', variables, 'shape', shape)
         
         for states in np.ndindex(shape):
             indexes = dict(zip(variables, states))
@@ -284,9 +282,36 @@ class Tree:
 
             return node
 
+    
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches."""
         self.root = type(self)._prune(self.root)
+
+    def _expand_node(cls, value : float, rest: set):
+        """Auxliar function that reexpand a previously prunned node."""
+        if rest:
+            var = rest.pop()
+            children = [_expand_node(set(rest)) for _ in range(self.cardinality[var])]
+            return nodes.BranchNode(var, children)
+
+        else:
+            return nodes.LeafNode(value)
+
+    def _unprune(cls, node: nodes.Node, assigned : set):
+        """Auxiliar, tail-recursion function that consider if two children are equal, in
+        which case it unifies them under the same reference."""
+        if not node.is_terminal():
+            node.children = [cls._unprune(child, assigned.union({node.name}))
+                             for child in node.children]
+            return node
+        elif assigned != self.variables:
+            return cls._expand_node(node.value, self.variables.difference(assigned))
+        else:
+            return node
+
+    def unprune(self):
+        """"Restore tree structure for easier modifications."""
+        self.root = type(self)._unprune(self.root, set())
 
     @staticmethod
     def _access(node: nodes.Node, states: IndexSelection) -> float:
@@ -629,6 +654,7 @@ class TableTree(Tree):
                    data: np.ndarray,
                    variables: List[str],
                    *,
+                   table_size : int = 5,
                    selector: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
 
@@ -666,6 +692,22 @@ class TableTree(Tree):
         return cls(root=root,
                    variables=set(variables),
                    cardinalities=cardinalities)
+
+    def _unprune(cls, node: nodes.Node, assigned : set):
+        """Auxiliar, tail-recursion function that consider if two children are equal, in
+        which case it unifies them under the same reference."""
+        if not node.is_terminal():
+            node.children = [cls._unprune(child, assigned.union({node.name}))
+                             for child in node.children]
+            return node
+        elif assigned != self.variables:
+            return node.extend(list(self.variables.difference(assigned)))
+        else:
+            return node
+        
+    def unprune(self):
+        """"Restore tree structure for easier modifications."""
+        self.root = type(self)._unprune(self.root, set())
 
     
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:

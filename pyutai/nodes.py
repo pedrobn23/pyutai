@@ -165,7 +165,7 @@ class LeafNode(Node):
         return self.__deepcopy__({})
 
     def access(self, states : Dict[str, int]):
-        return node.value
+        return self.value
     
     def restrict(self, _: Dict[str, int]):
         """Restrict variables to provided values.
@@ -281,6 +281,17 @@ class TableNode(Node):
                 node.variables.remove(variable)
 
         return node
+
+
+    def extend(self, variables : List[str]):
+        """Add variables by duplication"""
+        extra_vars = variables
+        slice_ = [slice(None)] * len(self.variables)
+        slice_.extend([np.newaxis] * len(extra_vars))
+
+        self.values = self.values[tuple(slice_)]
+        self.variables.extend(extra_vars)
+
     
     # TODO: Important, make inplace option
     def marginalize(self, variable, cardinalities):

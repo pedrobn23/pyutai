@@ -68,10 +68,19 @@ class TreeTestCase(unittest.TestCase):
                 self.assertEqual(arr[tuple(restricted_state)],
                                  restricted_tree.access(state))
 
+    def test_copy(self):
+        arr = np.array([[1, 6], [2, 2]])
+
+        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        tree2 = tree.copy()
+        
+        self.assertEqual(tree, tree2)
+        
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
 
         tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        
         self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
 
         tree.prune()
