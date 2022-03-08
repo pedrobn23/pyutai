@@ -109,7 +109,6 @@ class Tree:
 
         else:
             next_var = selector(assigned_vars)
-            #print(next_var)
             n_children = cardinalities[next_var]
 
             # Tail recursion propagation
@@ -287,6 +286,7 @@ class Tree:
         """"Reduces the size of the tree by erasing duplicated branches."""
         self.root = type(self)._prune(self.root)
 
+    @classmethod
     def _expand_node(cls, value : float, rest: set):
         """Auxliar function that reexpand a previously prunned node."""
         if rest:
@@ -297,6 +297,7 @@ class Tree:
         else:
             return nodes.LeafNode(value)
 
+    @classmethod
     def _unprune(cls, node: nodes.Node, assigned : set):
         """Auxiliar, tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
@@ -414,12 +415,15 @@ class Tree:
             return node * other
 
         elif node.is_terminal() and not other.is_terminal():
-            # Special cases for fast product
-            if node.value == 0:
-                return nodes.LeafNode(0)
-            elif node.value == 1:
-                return copy.deepcopy(other)
-
+            # Special cases for fast product in LeafNodes
+            try:
+                if node.value == 0:
+                    return nodes.LeafNode(0)
+                elif node.value == 1:
+                    return copy.deepcopy(other)
+            except AttributeError:
+                pass
+                
             # General case - interchange order
             return cls._product(other, node)
 
@@ -593,7 +597,7 @@ class Tree:
 
 class TableTree(Tree):
     @staticmethod
-    def restrict_table(data: np.ndarray, variables : List[str], assigned: Dict[str, int]):
+    def _restrict_table(data: np.ndarray, variables : List[str], assigned: Dict[str, int]):
         """Restrict variables to provided values"""
 
         filter_ = tuple(
@@ -627,24 +631,24 @@ class TableTree(Tree):
             selector = lambda assigned_vars: variables[len(assigned_vars)]
 
         # If every variable is already selected
-        if len(variables) >= len(assigned_vars)-table_size:
-            node_values, node_variables = cls.restrict_table(data, variables, assigned_vars) 
+        if len(variables) <= len(assigned_vars)+table_size:
+            node_values, node_variables = cls._restrict_table(data, variables, assigned_vars) 
             return nodes.TableNode(node_values, node_variables)
 
         else:
             next_var = selector(assigned_vars)
-            #print(next_var)
             n_children = cardinalities[next_var]
 
             # Tail recursion propagation
             children = []
             for i in range(n_children):
                 new_assigned_vars = dict(assigned_vars, **{next_var: i})
-                child = cls._from_callable(data=data,
-                                            variables=variables,
-                                            cardinalities=cardinalities,
-                                            assigned_vars=new_assigned_vars,
-                                            selector=selector)
+                child = cls._from_array(data=data,
+                                        variables=variables,
+                                        cardinalities=cardinalities,
+                                        assigned_vars=new_assigned_vars,
+                                        table_size=table_size,
+                                        selector=selector)
                 children.append(child)
 
             return nodes.BranchNode(next_var, children)
@@ -654,7 +658,7 @@ class TableTree(Tree):
                    data: np.ndarray,
                    variables: List[str],
                    *,
-                   table_size : int = 5,
+                   table_size : int = 1,
                    selector: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
 
@@ -671,8 +675,8 @@ class TableTree(Tree):
                 See VarSelector type for more information.
 
         Raises:
-            ValueError: is provided with an empty table, or if Array and cardinalities
-                does not match.
+            ValueError: is provided with an empty table, or data dimension does
+                not match variable list.
         """
         if data.size == 0:
             raise ValueError('Array should be non-empty')
@@ -685,14 +689,44 @@ class TableTree(Tree):
         cardinalities = dict(zip(variables, data.shape))
 
         root = cls._from_array(data=data,
-                                variables=variables,
-                                cardinalities=cardinalities,
-                                assigned_vars={},
-                                selector=selector)
+                               variables=variables,
+                               cardinalities=cardinalities,
+                               assigned_vars={},
+                               table_size=table_size, 
+                               selector=selector)
         return cls(root=root,
                    variables=set(variables),
                    cardinalities=cardinalities)
 
+    # Consider that you are using tail recursion so it might overload with big files.
+    @classmethod
+    def _prune(cls, node: nodes.Node):
+        """Auxiliar, tail-recursion function that consider if two children are equal, in
+        which case it unifies them under the same reference."""
+        if node.is_terminal():
+            return node
+        else:
+            node.children = [cls._prune(node) for node in node.children]
+
+            if not node.children:
+                raise ValueError('Children vector should not be empty.')
+                
+            if all(child.is_terminal() for child in node.children):
+                for child in node.children:
+                    if node.children[0] != child:
+                        return node
+                    # In this case every child is equal to children[0] 
+                return node.children[0].copy()
+
+            return node
+
+
+    
+    def prune(self):
+        """"Reduces the size of the tree by erasing duplicated branches."""
+        self.root = type(self)._prune(self.root)
+
+    @classmethod
     def _unprune(cls, node: nodes.Node, assigned : set):
         """Auxiliar, tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
