@@ -282,16 +282,6 @@ class TableNode(Node):
 
         return node
 
-
-    def extend(self, variables : List[str]):
-        """Add variables by duplication"""
-        extra_vars = variables
-        slice_ = [slice(None)] * len(self.variables)
-        slice_.extend([np.newaxis] * len(extra_vars))
-
-        self.values = self.values[tuple(slice_)]
-        self.variables.extend(extra_vars)
-
     
     # TODO: Important, make inplace option
     def marginalize(self, variable, cardinalities):

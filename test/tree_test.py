@@ -147,14 +147,13 @@ class StandardTestCase(TreeTestCase, unittest.TestCase):
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
         tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        tree2 = tree.copy()
         
         self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
         tree.prune()
         self.assertEqual(tree.root.size(), 5)  # prune two leaves
         tree.unprune()
-
-        print(tree)
-
+        self.assertEqual(tree, tree2)  
 
     def test_exceptions_from_array(self):
         with self.assertRaises(ValueError):
@@ -167,7 +166,7 @@ class TableTreeTestCase(TreeTestCase, unittest.TestCase):
     Test Class for values.Tree class.
 
     """
-    def tree_creation(self, arr, variables, cardinalities):
+    def tree_creation(self, arr, variables, cardinalities, *, table_size = 1):
         return values.TableTree.from_array(arr, variables)
 
 
@@ -181,12 +180,14 @@ class TableTreeTestCase(TreeTestCase, unittest.TestCase):
     def test_prune(self):
         arr = np.array([[1, 1], [1, 1]])
         tree = values.TableTree.from_array(arr, ['0', '1'], table_size = 1)
+        tree2 = tree.copy()
 
         self.assertEqual(tree.root.size(), 3)  # Complete node 4 + 2 + 1
         tree.prune()
         self.assertEqual(tree.root.size(), 1)  # prune two leaves
+        tree.unprune()
+        self.assertEqual(tree, tree2)  
 
-        print(tree)
 
 if __name__ == '__main__':
     unittest.main()

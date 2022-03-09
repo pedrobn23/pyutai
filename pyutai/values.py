@@ -623,8 +623,6 @@ class TableTree(Tree):
 
         return new_data, new_variables
     
-    
-    
     @classmethod
     def _from_array(cls,
                     data: np.ndarray,
@@ -732,29 +730,42 @@ class TableTree(Tree):
                 return node.children[0].copy()
 
             return node
-
-
-    
+        
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches."""
-        self.root = type(self)._prune(self.root)
+        self.root = self._prune(self.root)
 
     @classmethod
-    def _unprune(cls, node: nodes.Node, assigned : set):
+    def _expand_node(cls, node : nodes.TableNode, rest: set, cardinalities : Dict[str, int]):
+        """Auxliar function that reexpand a previously prunned node."""
+        if rest:
+            var = rest.pop()
+            children = [cls._expand_node(node, set(rest), cardinalities) for _ in range(cardinalities[var])]
+            return nodes.BranchNode(var, children)
+
+        else:
+            return node.copy()
+
+        
+    def _unprune(self, node: nodes.Node, assigned : set):
         """Auxiliar, tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
         if not node.is_terminal():
-            node.children = [cls._unprune(child, assigned.union({node.name}))
+            node.children = [self._unprune(child, assigned.union({node.name}))
                              for child in node.children]
             return node
-        elif assigned != self.variables:
-            return node.extend(list(self.variables.difference(assigned)))
+
+        elif len(assigned) + len(node.variables) != self.variables:
+            variables_left = self.variables.difference(set(node.variables).union(assigned))            
+            return type(self)._expand_node(node, variables_left, self.cardinalities)
+
         else:
             return node
         
+        
     def unprune(self):
         """"Restore tree structure for easier modifications."""
-        self.root = type(self)._unprune(self.root, set())
+        self.root = self._unprune(self.root, set())
 
     
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
