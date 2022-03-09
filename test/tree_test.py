@@ -10,7 +10,7 @@ import numpy as np
 from pyutai import values, nodes
 
 
-class TreeTestCase(unittest.TestCase):
+class TreeTestCase():
     """
     Test Class for values.Tree class.
     """
@@ -26,12 +26,14 @@ class TreeTestCase(unittest.TestCase):
 
         self.cardinalities = {'A': 2, 'B': 3, 'C': 2}
         self.trees = [
-            values.Tree.from_array(arr, variables, self.cardinalities)
+            self.tree_creation(arr, variables, self.cardinalities)
             for arr, variables in zip(self.arrays, self.variables)
         ]
 
         self.maxDiff = 1000
 
+
+        
     def test_deepcopy_and_equality(self):
         for tree in self.trees:
             other = copy.deepcopy(tree)
@@ -40,9 +42,9 @@ class TreeTestCase(unittest.TestCase):
 
     def test_exceptions_from_array(self):
         with self.assertRaises(ValueError):
-            values.Tree.from_array(np.array([]), [], {})
+            self.tree_creation(np.array([]), [], {})
         with self.assertRaises(ValueError):
-            values.Tree.from_array(np.array([1]), ['A'], {'A': 2})
+            self.tree_creation(np.array([1]), ['A'], {'A': 2})
 
     def test_access(self):
         for arr, tree, variables in zip(self.arrays, self.trees,
@@ -71,7 +73,7 @@ class TreeTestCase(unittest.TestCase):
     def test_copy(self):
         arr = np.array([[1, 6], [2, 2]])
 
-        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        tree = self.tree_creation(arr, ['0', '1'], {'0': 2, '1': 2})
         tree2 = tree.copy()
         
         self.assertEqual(tree, tree2)
@@ -79,7 +81,7 @@ class TreeTestCase(unittest.TestCase):
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
 
-        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        tree = self.tree_creation(arr, ['0', '1'], {'0': 2, '1': 2})
         
         self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
 
@@ -87,17 +89,21 @@ class TreeTestCase(unittest.TestCase):
 
         self.assertEqual(tree.root.size(), 5)  # prune two leaves
 
+        tree.unprune()
+
+        print(tree)
+        
     def test_product(self):
         card = {'A': 2, 'B': 2, 'C': 2}
 
         arr1 = np.array([[1, 2], [2, 3]])
-        tree1 = values.Tree.from_array(arr1, ['A', 'B'], card)
+        tree1 = self.tree_creation(arr1, ['A', 'B'], card)
 
         arr2 = np.array([[4, 5], [0, 0]])
-        tree2 = values.Tree.from_array(arr2, ['B', 'C'], card)
+        tree2 = self.tree_creation(arr2, ['B', 'C'], card)
 
         arr3 = np.array([[[4, 5], [0, 0]], [[8, 10], [0, 0]]])
-        tree3 = values.Tree.from_array(arr3, ['A', 'B', 'C'], card)
+        tree3 = self.tree_creation(arr3, ['A', 'B', 'C'], card)
 
         tree4 = tree1.product(tree2)
 
@@ -112,7 +118,7 @@ class TreeTestCase(unittest.TestCase):
             np.array([[1, 1], [1, 1]])
         ]
 
-        trees = [values.Tree.from_array(arr, ['A', 'B'], card) for arr in arrs]
+        trees = [self.tree_creation(arr, ['A', 'B'], card) for arr in arrs]
 
         for zip1, zip2 in itertools.permutations(zip(arrs, trees), 2):
             arr1, tree1 = zip1
@@ -121,14 +127,66 @@ class TreeTestCase(unittest.TestCase):
             tree3 = tree1 + tree2
             tree4 = tree2.sum(tree1)
 
-            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card),
+            self.assertEqual(self.tree_creation(arr3, ['A', 'B'], card),
                              tree3)
-            self.assertEqual(values.Tree.from_array(arr3, ['A', 'B'], card),
+            self.assertEqual(self.tree_creation(arr3, ['A', 'B'], card),
                              tree4)
 
     def test_marginalize(self):
         pass
 
+
+class StandardTestCase(TreeTestCase, unittest.TestCase):
+    """
+    Test Class for values.Tree class.
+
+    """
+    def tree_creation(self, arr, variables, cardinalities):
+        return values.Tree.from_array(arr, variables, cardinalities)
+
+    def test_prune(self):
+        arr = np.array([[1, 6], [2, 2]])
+        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        
+        self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
+        tree.prune()
+        self.assertEqual(tree.root.size(), 5)  # prune two leaves
+        tree.unprune()
+
+        print(tree)
+
+
+    def test_exceptions_from_array(self):
+        with self.assertRaises(ValueError):
+            values.Tree.from_array(np.array([]), [], {})
+        with self.assertRaises(ValueError):
+            values.Tree.from_array(np.array([1]), ['A'], {'A': 2})
+
+class TableTreeTestCase(TreeTestCase, unittest.TestCase):
+    """
+    Test Class for values.Tree class.
+
+    """
+    def tree_creation(self, arr, variables, cardinalities):
+        return values.TableTree.from_array(arr, variables)
+
+
+
+    def test_exceptions_from_array(self):
+        with self.assertRaises(ValueError):
+            values.TableTree.from_array(np.array([]), [])
+        with self.assertRaises(ValueError):
+            values.TableTree.from_array(np.array([1]), ['A', 'B'])
+
+    def test_prune(self):
+        arr = np.array([[1, 1], [1, 1]])
+        tree = values.TableTree.from_array(arr, ['0', '1'], table_size = 1)
+
+        self.assertEqual(tree.root.size(), 3)  # Complete node 4 + 2 + 1
+        tree.prune()
+        self.assertEqual(tree.root.size(), 1)  # prune two leaves
+
+        print(tree)
 
 if __name__ == '__main__':
     unittest.main()

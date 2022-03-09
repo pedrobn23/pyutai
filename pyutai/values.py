@@ -30,8 +30,9 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-import itertools
 import functools
+import itertools
+import sys
 import warnings
 
 from typing import Callable, Dict, List
@@ -287,32 +288,31 @@ class Tree:
         self.root = type(self)._prune(self.root)
 
     @classmethod
-    def _expand_node(cls, value : float, rest: set):
+    def _expand_node(cls, value : float, rest: set, cardinalities : Dict[str, int]):
         """Auxliar function that reexpand a previously prunned node."""
         if rest:
             var = rest.pop()
-            children = [_expand_node(set(rest)) for _ in range(self.cardinality[var])]
+            children = [cls._expand_node(value, set(rest), cardinalities) for _ in range(cardinalities[var])]
             return nodes.BranchNode(var, children)
 
         else:
             return nodes.LeafNode(value)
 
-    @classmethod
-    def _unprune(cls, node: nodes.Node, assigned : set):
+    def _unprune(self, node: nodes.Node, assigned : set):
         """Auxiliar, tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
         if not node.is_terminal():
-            node.children = [cls._unprune(child, assigned.union({node.name}))
+            node.children = [self._unprune(child, assigned.union({node.name}))
                              for child in node.children]
             return node
         elif assigned != self.variables:
-            return cls._expand_node(node.value, self.variables.difference(assigned))
+            return type(self)._expand_node(node.value, self.variables.difference(assigned), self.cardinalities)
         else:
             return node
 
     def unprune(self):
         """"Restore tree structure for easier modifications."""
-        self.root = type(self)._unprune(self.root, set())
+        self.root = self._unprune(self.root, set())
 
     @staticmethod
     def _access(node: nodes.Node, states: IndexSelection) -> float:
@@ -408,6 +408,19 @@ class Tree:
                               variables=variables,
                               cardinalities=self.cardinalities)
 
+
+    def _update_cardinality(self, other):
+        """Helper to make cardinality update in old python versions."""
+
+        if sys.version_info.minor >= 9:
+            return self.cardinalities | other.cardinalities
+        else:
+            result = dict(self.cardinalities)
+            for var, value in other.cardinalities.items():
+                if var not in result:
+                    result[var] = value
+            return result
+        
     @classmethod
     def _product(cls, node, other):
         """Tail-recursion helper."""
@@ -456,7 +469,7 @@ class Tree:
         variables = self.variables.union(other.variables)
         tree = type(self)(root=root,
                           variables=variables,
-                          cardinalities=self.cardinalities)
+                          cardinalities=self._update_cardinality(other))
         if inplace:
             self = tree
 
@@ -515,7 +528,7 @@ class Tree:
         root = type(self)._sum(self.root, other.root)
         tree = type(self)(root=root,
                           variables=self.variables.copy(),
-                          cardinalities=self.cardinalities)
+                          cardinalities=self._update_cardinality(other))
         if inplace:
             self = tree
 

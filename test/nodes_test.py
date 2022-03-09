@@ -78,8 +78,6 @@ class TableNodeTestCase(unittest.TestCase):
         nodeb = nodes.TableNode(values=tableb, variables=['B', 'C'])
         nodec = nodes.TableNode(values=tablec, variables=['A', 'B', 'C'])
 
-        print(nodea * nodeb)
-        print(nodec)
         self.assertEqual(nodea * nodeb, nodec)
 
 

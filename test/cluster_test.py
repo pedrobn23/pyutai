@@ -101,7 +101,6 @@ class ClusterTestCase(unittest.TestCase):
                                                    'B': 2
                                                })
 
-        print(test.reduce_cluster(2))
 
     def test_array(self):
         nums = itertools.chain(range(10), range(10), range(10))
