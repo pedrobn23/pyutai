@@ -86,7 +86,9 @@ class Tree:
     root: nodes.Node
     variables: Set[str]
     cardinalities: Dict[str, int]
-
+    pruned : bool = False
+    
+    
     @classmethod
     def _from_callable(cls,
                        data: DataAccessor,
@@ -154,7 +156,8 @@ class Tree:
                                    selector=selector)
         return cls(root=root,
                    variables=set(variables),
-                   cardinalities=cardinalities)
+                   cardinalities=cardinalities,
+                   pruned=False)
 
     @classmethod
     def from_array(cls,
@@ -287,7 +290,8 @@ class Tree:
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches."""
         self.root = type(self)._prune(self.root)
-
+        self.pruned = True
+        
     @classmethod
     def _expand_node(cls, value : float, rest: set, cardinalities : Dict[str, int]):
         """Auxliar function that reexpand a previously prunned node."""
@@ -314,7 +318,8 @@ class Tree:
     def unprune(self):
         """"Restore tree structure for easier modifications."""
         self.root = self._unprune(self.root, set())
-
+        self.pruned = False
+        
     @staticmethod
     def _access(node: nodes.Node, states: IndexSelection) -> float:
         """Helper method for access function."""
@@ -328,16 +333,11 @@ class Tree:
     def access(self, states: IndexSelection) -> float:
         """Value associated with a given series of states.
 
-        Returns a value for a given state configuration. It receives either a
-        list or a tuple of states, with as many states as variables.
+        Returns a value for a given state configuration.
 
-        In the case of retrained variables, via restrict method, those values
-        are ignored unless ignore_restricts is set to True. If no variable is
-        restricted, every value is considered.
-
-        In some case, specially in pruned tree, it is not necessary to state
+        In some case, specially in pruned trees, it is not necessary to state
         the value of every variable to get the value. Nonetheless, for good
-        measure, a complete set of states is required.
+        measure, a complete set of states is usually required.
 
         Args:
             states: Dictionary of states for each variable.
@@ -362,6 +362,57 @@ class Tree:
                 f'enough information to select one value.') from key_error
         return value
 
+    @staticmethod
+    def _set(node: nodes.Node, states: IndexSelection, value : float):
+        """Helper method for access function."""
+        while not node.is_terminal():
+            var = node.name
+            state = states[var]
+            node = node.children[state]
+            
+        return node.set(value, states)
+
+    
+    def set(self, states: IndexSelection, value : float):
+        """Set the value associated with a given series of states.
+
+        Set a value for a given state configuration. 
+
+        A complete set of states is required.
+
+        Note that set operation need to modify the values, so it unprune
+        the tree before starting if needed. This can affect efficiency, and
+        maybe you want to prune the tree again after any needed modification.
+
+        Args:
+            states: Dictionary of states for each variable.
+
+        Raises:
+            ValueError: if incorrect states are provided. In particular if:
+                * An state is out of bound for its variable.
+                * There is not enough information in states to retrieve a value.
+        """
+
+        for var in states:
+            if (state := states[var]) >= (bound :=
+                                          self.cardinalities[var]) or state < 0:
+                raise ValueError(f'State for variable {var} is out of bound;' +
+                                 f'expected state in interval:[0,{bound}),' +
+                                 f'received: {state}.')
+
+        if self.pruned:
+            self.unprune()
+            
+        try:
+            type(self)._set(self.root, states, value)
+        except KeyError as key_error:
+            raise ValueError(
+                f'State configuration {states} does not have' +
+                f'enough information to select one value.') from key_error
+        return value
+
+
+    
     #TODO: separate inplace and copy style
     @classmethod
     def _restrict(cls, node: nodes.Node, restrictions: IntexType):
@@ -606,7 +657,6 @@ class Tree:
 
         return True
 
-
         
 
 class TableTree(Tree):
@@ -735,7 +785,8 @@ class TableTree(Tree):
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches."""
         self.root = self._prune(self.root)
-
+        self.pruned = True
+        
     @classmethod
     def _expand_node(cls, node : nodes.TableNode, rest: set, cardinalities : Dict[str, int]):
         """Auxliar function that reexpand a previously prunned node."""
@@ -767,7 +818,7 @@ class TableTree(Tree):
     def unprune(self):
         """"Restore tree structure for easier modifications."""
         self.root = self._unprune(self.root, set())
-
+        self.pruned = False
     
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
     """Square Euclidean distance between two trees.

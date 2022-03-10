@@ -166,6 +166,9 @@ class LeafNode(Node):
 
     def access(self, states : Dict[str, int]):
         return self.value
+
+    def set(self, value : float, _):
+        self.value = value
     
     def restrict(self, _: Dict[str, int]):
         """Restrict variables to provided values.
@@ -265,7 +268,12 @@ class TableNode(Node):
     def access(self, states : Dict[str, int]):
         filter_ = tuple(states[var] for var in self.variables)
         return self.values[filter_]
-        
+
+    def set(self, value:float, states : Dict[str, int]):
+        filter_ = tuple(states[var] for var in self.variables)
+        self.values[filter_] = value
+    
+    
     def restrict(self, restrictions: Dict[str, int]):
         """Restrict variables to provided values"""
         node = self.copy()

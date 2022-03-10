@@ -39,6 +39,26 @@ class TreeTestCase():
             self.assertNotEqual(id(other), id(tree))
 
     def test_access(self):
+
+        for prune in [True, False]:
+            arr =  np.array([[1, 6, 3], [2, 2, 2]])
+            variables = ['A','B']
+            tree = self.tree_creation(arr, variables, self.cardinalities)
+            if prune:
+                tree.prune()
+        
+            arr =  np.array([[1, 6, 3], [2, 2, 1]])
+            tree.set({'A':1,'B':2}, 1)
+            
+            # adapter from IndexType to numpy Index-Tuple
+            data_accessor = lambda x: arr.item(
+                tuple(x[var] for var in variables))
+
+            for element in tree:
+                self.assertEqual(data_accessor(element.state), element.value)
+
+
+    def test_set(self):
         for arr, tree, variables in zip(self.arrays, self.trees,
                                         self.variables):
             # adapter from IndexType to numpy Index-Tuple
@@ -143,10 +163,18 @@ class StandardTestCase(TreeTestCase, unittest.TestCase):
         tree2 = tree.copy()
         
         self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
+        self.assertEqual(tree.pruned, False)
+
         tree.prune()
+
         self.assertEqual(tree.root.size(), 5)  # prune two leaves
+        self.assertEqual(tree.pruned, True)
+
         tree.unprune()
-        self.assertEqual(tree, tree2)  
+
+        self.assertEqual(tree.pruned, False)
+        self.assertEqual(tree, tree2)
+
 
     def test_exceptions_from_array(self):
         with self.assertRaises(ValueError):
@@ -175,11 +203,19 @@ class TableTreeTestCase(TreeTestCase, unittest.TestCase):
         tree = values.TableTree.from_array(arr, ['0', '1'], table_size = 1)
         tree2 = tree.copy()
 
-        self.assertEqual(tree.root.size(), 3)  # Complete node 4 + 2 + 1
+
+        self.assertEqual(tree.root.size(), 3)  # Complete node  2 + 1
+        self.assertEqual(tree.pruned, False)
+
         tree.prune()
+
         self.assertEqual(tree.root.size(), 1)  # prune two leaves
+        self.assertEqual(tree.pruned, True)
+
         tree.unprune()
-        self.assertEqual(tree, tree2)  
+
+        self.assertEqual(tree.pruned, False)
+        self.assertEqual(tree, tree2)
 
 
 if __name__ == '__main__':
