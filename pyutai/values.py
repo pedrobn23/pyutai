@@ -184,6 +184,7 @@ class Tree:
         if data.size == 0:
             raise ValueError('Array should be non-empty')
 
+
         if len(data.shape) != len(variables):
             raise ValueError(f'Array shape does not match number of variables' +
                              f'provided.\nArray shape: {data}, ' +
@@ -544,16 +545,16 @@ class Tree:
         return self.sum(other, inplace=True)
 
     @classmethod
-    def _marginalize(cls, node: nodes.Node, variable: str):
+    def _marginalize(cls, node: nodes.Node, variable: str, cardinalities : Dict[str, int]):
         if node.is_terminal():
-            return node.marginalize(variable, self.cardinalities)
+            return node.marginalize(variable, cardinalities)
 
         else:
             if node.name == variable:
                 return functools.reduce(cls._sum, node.children)
             else:
                 children = [
-                    cls._marginalize(child, variable) for child in node.children
+                    cls._marginalize(child, variable, cardinalities) for child in node.children
                 ]
                 return nodes.BranchNode(node.name, children)
 
@@ -571,7 +572,7 @@ class Tree:
             Tree: Modified tree.
         """
 
-        root = type(self)._marginalize(self.root, variable)
+        root = type(self)._marginalize(self.root, variable, self.cardinalities)
 
         variables = set(self.variables)
         variables.remove(variable)

@@ -31,20 +31,12 @@ class TreeTestCase():
         ]
 
         self.maxDiff = 1000
-
-
         
     def test_deepcopy_and_equality(self):
         for tree in self.trees:
             other = copy.deepcopy(tree)
             self.assertEqual(other, tree)
             self.assertNotEqual(id(other), id(tree))
-
-    def test_exceptions_from_array(self):
-        with self.assertRaises(ValueError):
-            self.tree_creation(np.array([]), [], {})
-        with self.assertRaises(ValueError):
-            self.tree_creation(np.array([1]), ['A'], {'A': 2})
 
     def test_access(self):
         for arr, tree, variables in zip(self.arrays, self.trees,
@@ -77,21 +69,6 @@ class TreeTestCase():
         tree2 = tree.copy()
         
         self.assertEqual(tree, tree2)
-        
-    def test_prune(self):
-        arr = np.array([[1, 6], [2, 2]])
-
-        tree = self.tree_creation(arr, ['0', '1'], {'0': 2, '1': 2})
-        
-        self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
-
-        tree.prune()
-
-        self.assertEqual(tree.root.size(), 5)  # prune two leaves
-
-        tree.unprune()
-
-        print(tree)
         
     def test_product(self):
         card = {'A': 2, 'B': 2, 'C': 2}
@@ -133,7 +110,23 @@ class TreeTestCase():
                              tree4)
 
     def test_marginalize(self):
-        pass
+        card = {'A': 2, 'B': 2}
+
+        arrs = [
+            np.array([[1, 2], [2, 3]]),
+            np.array([[4, 5], [0, 0]]),
+            np.array([[1, 1], [1, 1]])
+        ]
+
+        trees = [self.tree_creation(arr, ['A', 'B'], card) for arr in arrs]
+        trees = [tree.marginalize('B')  for tree in trees]
+        
+        marg_arrs = [arr.sum(axis=1) for arr in arrs]
+        marg_trees = [self.tree_creation(arr, ['A'], card) for arr in marg_arrs]
+
+        for tree1, tree2 in zip(trees, marg_trees):
+            self.assertEqual(tree1, tree2)
+
 
 
 class StandardTestCase(TreeTestCase, unittest.TestCase):
