@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyutai",
-    version="0.1.5.17",
+    version="0.1.5.18",
     author="UTAI Group",
     description="A Python implementation of Potentials Tree.",
     long_description=long_description,

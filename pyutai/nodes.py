@@ -194,24 +194,35 @@ class LeafNode(Node):
         return 1
 
     def __add__(self, other):
-        return type(self)(value=self.value + other.value)
+        if isinstance(other, (int, float)):
+            return type(self)(value=self.value + other)
+        else:
+            return type(self)(value=self.value + other.value) 
 
     def __radd__(self, other):
-        return type(self)(value=other.value + self.value)
+        return self.__add__(other)
 
     def __iadd__(self, other):
-        self.value += other.value
+        if isinstance(other, (int, float)):
+            self.value += other
+        else:
+            self.value += other.value
         return self
 
     def __mul__(self, other):
-        return type(self)(value=self.value * other.value)
+        if isinstance(other, (int, float)):
+            return type(self)(value=self.value * other)
+        else:
+            return type(self)(value=self.value * other.value) 
 
     def __rmul__(self, other):
-        print(other, self)
-        return type(self)(value=other.value * self.value)
+        return self.__mul__(other)
 
     def __imul__(self, other):
-        self.value = self.value * other.value
+        if isinstance(other, (int, float)):
+            self.value *= other
+        else:
+            self.value *= other.value
         return self
 
 
@@ -350,7 +361,7 @@ class TableNode(Node):
         return result
 
     def _product(self, other, *, inplace=False):
-        """Based on pgmpy sum method[1]."""
+        """Based on pgmpy sum method[1]."""           
         result = type(self)._extend_new_variables(self, other)
 
         other_values = type(self)._extend_new_variables(other, self)
@@ -365,22 +376,38 @@ class TableNode(Node):
         return result
 
     def __mul__(self, other):
-        return self._product(other, inplace=False)
+        if isinstance(other, (int, float)):
+            return type(self)(values = self.values * other,
+                              variables = list(self.variables))
+        else:
+            return self._product(other, inplace=False)
 
     def __rmul__(self, other):
-        return other._product(self, inplace=False)
+        return self.__mul__(other)
 
     def __imul__(self, other):
-        return self._product(other, inplace=True)
+        if isinstance(other, (int, float)):
+            self.values = self.values * other,
+            return self
+        else:
+            return self._product(other, inplace=True)
 
     def __add__(self, other):
-        return self._sum(other, inplace=False)
+        if isinstance(other, (int, float)):
+            return type(self)(values = self.values + other,
+                              variables = list(self.variables))
+        else:
+            return self._sum(other, inplace=False)
 
     def __radd__(self, other):
-        return other._sum(self, inplace=False)
+        return self.__add__(other)
 
     def __iadd__(self, other):
-        return self._sum(other, inplace=True)
+        if isinstance(other, (int, float)):
+            self.values = self.values + other,
+            return self
+        else:
+            return self._sum(other, inplace=True)
 
 
 class MarkedNode(BranchNode):

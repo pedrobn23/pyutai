@@ -117,7 +117,8 @@ class Tree:
             # Tail recursion propagation
             children = []
             for i in range(n_children):
-                new_assigned_vars = dict(assigned_vars, **{next_var: i})
+                new_assigned_vars = dict(assigned_vars)
+                new_assigned_vars[next_var] = i
                 child = cls._from_callable(data=data,
                                             variables=variables,
                                             cardinalities=cardinalities,
@@ -409,9 +410,6 @@ class Tree:
             raise ValueError(
                 f'State configuration {states} does not have' +
                 f'enough information to select one value.') from key_error
-        return value
-
-
     
     #TODO: separate inplace and copy style
     @classmethod
@@ -481,13 +479,12 @@ class Tree:
 
         elif node.is_terminal() and not other.is_terminal():
             # Special cases for fast product in LeafNodes
-            try:
+            if isinstance(node, nodes.LeafNode)
                 if node.value == 0:
                     return nodes.LeafNode(0)
                 elif node.value == 1:
                     return copy.deepcopy(other)
-            except AttributeError:
-                pass
+
                 
             # General case - interchange order
             return cls._product(other, node)
@@ -704,7 +701,8 @@ class TableTree(Tree):
             # Tail recursion propagation
             children = []
             for i in range(n_children):
-                new_assigned_vars = dict(assigned_vars, **{next_var: i})
+                new_assigned_vars = dict(assigned_vars)
+                new_assigned_vars[next_var] = i
                 child = cls._from_array(data=data,
                                         variables=variables,
                                         cardinalities=cardinalities,
