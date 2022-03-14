@@ -32,6 +32,10 @@ class TreeTestCase():
 
         self.maxDiff = 1000
         
+    def test_weight(self):
+        for arr, tree in zip(self.arrays, self.trees):
+            self.assertEqual(arr.sum(), tree.weight)
+            
     def test_deepcopy_and_equality(self):
         for tree in self.trees:
             other = copy.deepcopy(tree)
@@ -106,6 +110,19 @@ class TreeTestCase():
 
         self.assertEqual(tree4, tree3)
 
+
+    def test_scalar_product(self):
+        card = {'A': 2, 'B': 2, 'C': 2}
+        
+        arr1 = np.array([[1, 2], [2, 3]])
+        tree1 = self.tree_creation(arr1, ['A', 'B'], card)
+        tree1.product(2)
+
+        arr2 = np.array([[1, 2], [2, 3]])*2
+        tree2 = self.tree_creation(arr1, ['A', 'B'], card)
+
+        self.assertEqual(tree1, tree2)
+        
     def test_sum(self):
         card = {'A': 2, 'B': 2}
 

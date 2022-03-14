@@ -87,7 +87,15 @@ class Tree:
     variables: Set[str]
     cardinalities: Dict[str, int]
     pruned : bool = False
-    
+    weight : float = None 
+
+
+    def __post_init__(self):
+        # Fallback case
+
+        if self.weight is None:
+            self.weight = sum(elem.value for elem in self)
+
     
     @classmethod
     def _from_callable(cls,
@@ -95,6 +103,7 @@ class Tree:
                        variables: List[str],
                        cardinalities: Dict[str, int],
                        assigned_vars: Dict[str, int],
+
                        *,
                        selector: VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_callable method.
@@ -134,7 +143,8 @@ class Tree:
                       variables: List[str],
                       cardinalities: Dict[str, int],
                       *,
-                      selector: VarSelector = None):
+                      selector: VarSelector = None,
+                      weight : float = None):
         """Create a Tree from a callable.
 
         Read a potential from a given callable, and store it in a value tree.
@@ -158,7 +168,8 @@ class Tree:
         return cls(root=root,
                    variables=set(variables),
                    cardinalities=cardinalities,
-                   pruned=False)
+                   pruned=False,
+                   weight=weight)
 
     @classmethod
     def from_array(cls,
@@ -208,7 +219,8 @@ class Tree:
             data_accessor,
             variables,  # has to be a list
             cardinalities,
-            selector=selector)
+            selector=selector,
+            weight=data.sum())
 
     def __iter__(self):
         """Returns an iterator over the values of the Tree.
@@ -220,7 +232,11 @@ class Tree:
         """
         # Variables are ordered to ensure consistent iteration.
         variables = list(self.variables)
-        variables.sort()
+
+        try:
+            variables.sort()
+        except TypeError as type_error:
+            warnings.warn('As variables are not suitable to ordering, iteration order may vary.')
 
         shape = tuple(self.cardinalities[var] for var in variables)
         
@@ -252,7 +268,9 @@ class Tree:
         """
         return type(self)(root=copy.deepcopy(self.root),
                           variables=self.variables.copy(),
-                          cardinalities=self.cardinalities)
+                          cardinalities=self.cardinalities,
+                          pruned=self.pruned,
+                          weight=self.weight)
 
     def copy(self):
         """Deepcopy the provided tree. Beaware that cardinalities is assumed to be shared
@@ -403,14 +421,21 @@ class Tree:
 
         if self.pruned:
             self.unprune()
-            
+
         try:
+            old_value = self.access(states)
             type(self)._set(self.root, states, value)
+            self.weight += (value - old_value)
+            
         except KeyError as key_error:
             raise ValueError(
                 f'State configuration {states} does not have' +
                 f'enough information to select one value.') from key_error
-    
+
+
+        
+        
+        
     #TODO: separate inplace and copy style
     @classmethod
     def _restrict(cls, node: nodes.Node, restrictions: IntexType):
@@ -456,7 +481,8 @@ class Tree:
 
             return type(self)(root=restricted_root,
                               variables=variables,
-                              cardinalities=self.cardinalities)
+                              cardinalities=self.cardinalities,
+                              pruned=self.pruned)
 
 
     def _update_cardinality(self, other):
@@ -472,6 +498,21 @@ class Tree:
             return result
         
     @classmethod
+    def _scalar_product(cls, node, other):
+        """Tail-recursion helper."""
+        if node.is_terminal():
+            return node * other
+
+        else:  # Whenever node is not terminal
+            var = node.name
+            children = [
+                cls._scalar_product(child, other)
+                for i, child in enumerate(node.children)
+            ]
+
+            return nodes.BranchNode(var, children)
+
+    @classmethod
     def _product(cls, node, other):
         """Tail-recursion helper."""
         if node.is_terminal() and other.is_terminal():
@@ -479,7 +520,7 @@ class Tree:
 
         elif node.is_terminal() and not other.is_terminal():
             # Special cases for fast product in LeafNodes
-            if isinstance(node, nodes.LeafNode)
+            if isinstance(node, nodes.LeafNode):
                 if node.value == 0:
                     return nodes.LeafNode(0)
                 elif node.value == 1:
@@ -512,13 +553,24 @@ class Tree:
             Tree: Product tree.
         """
         # TODO: incluir producto por entero y flotante.
+        if isinstance(other, (int, float)):
+            root = type(self)._scalar_product(self.root, other)
+            variables = set(self.variables)
+            cardinalities = self.cardinalities
+            pruned = self.pruned
+            weight = self.weight * other
+        else:
+            root = type(self)._product(self.root, other.root)
+            variables = self.variables.union(other.variables)
+            cardinalities=self._update_cardinality(other)
+            pruned=self.pruned or other.pruned
+            weight = self.weight * other.weight
 
-        
-        root = type(self)._product(self.root, other.root)
-        variables = self.variables.union(other.variables)
         tree = type(self)(root=root,
                           variables=variables,
-                          cardinalities=self._update_cardinality(other))
+                          cardinalities=cardinalities,
+                          pruned=pruned,
+                          weight=weight)
         if inplace:
             self = tree
 
@@ -577,7 +629,8 @@ class Tree:
         root = type(self)._sum(self.root, other.root)
         tree = type(self)(root=root,
                           variables=self.variables.copy(),
-                          cardinalities=self._update_cardinality(other))
+                          cardinalities=self._update_cardinality(other),
+                          weight=self.weight*other.weight)
         if inplace:
             self = tree
 
@@ -648,6 +701,10 @@ class Tree:
             if self.cardinalities[variable] != other.cardinalities[variable]:
                 return False
 
+        # using this to avoid floating point error
+        if abs(self.weight - other.weight) > 10**5:
+            return False
+            
         for element in self:
             if other.access(element.state) != element.value:
                 return False
