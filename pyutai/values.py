@@ -495,8 +495,8 @@ class Tree:
             for var, value in other.cardinalities.items():
                 if var not in result:
                     result[var] = value
-            return result
-        
+        return result
+                
     @classmethod
     def _scalar_product(cls, node, other):
         """Tail-recursion helper."""
@@ -555,22 +555,20 @@ class Tree:
         # TODO: incluir producto por entero y flotante.
         if isinstance(other, (int, float)):
             root = type(self)._scalar_product(self.root, other)
-            variables = set(self.variables)
-            cardinalities = self.cardinalities
-            pruned = self.pruned
-            weight = self.weight * other
+            tree = type(self)(root=root,
+                              variables = set(self.variables),
+                              cardinalities = self.cardinalities,
+                              pruned = self.pruned,
+                              weight = self.weight * other)
         else:
             root = type(self)._product(self.root, other.root)
-            variables = self.variables.union(other.variables)
-            cardinalities=self._update_cardinality(other)
-            pruned=self.pruned or other.pruned
-            weight = self.weight * other.weight
+            tree = type(self)(root=root,
+                              variables= self.variables.union(other.variables),
+                              cardinalities=self._update_cardinality(other),
+                              pruned=self.pruned or other.pruned,
+                              weight = self.weight * other.weight)
 
-        tree = type(self)(root=root,
-                          variables=variables,
-                          cardinalities=cardinalities,
-                          pruned=pruned,
-                          weight=weight)
+
         if inplace:
             self = tree
 
@@ -584,7 +582,23 @@ class Tree:
 
     def __imul__(self, other):
         return self.product(other, inplace=True)
+                
+    @classmethod
+    def _scalar_sum(cls, node, other):
+        """Tail-recursion helper."""
+        if node.is_terminal():
+            return node + other
 
+        else:  # Whenever node is not terminal
+            var = node.name
+            children = [
+                cls._scalar_product(child, other)
+                for i, child in enumerate(node.children)
+            ]
+
+            return nodes.BranchNode(var, children)
+
+    
     @classmethod
     def _sum(cls, node, other):
         """Tail-recursion helper."""
@@ -593,9 +607,10 @@ class Tree:
             return node + other
 
         elif node.is_terminal() and not other.is_terminal():
-            # Special cases for fast sum
-            if node.value == 0:
-                return copy.deepcopy(other)
+            # Special cases for fast sum in leaf nodes
+            if isinstance(node, nodes.LeafNode):
+                if node.value == 0:
+                    return copy.deepcopy(other)
 
             # General case - interchange order
             return cls._sum(other, node)
@@ -623,14 +638,21 @@ class Tree:
             Tree: sum tree.
         """
 
-        if self.variables != other.variables:
-            raise ValueError("Trees needs to have the same variables to be sum")
-
-        root = type(self)._sum(self.root, other.root)
-        tree = type(self)(root=root,
-                          variables=self.variables.copy(),
-                          cardinalities=self._update_cardinality(other),
-                          weight=self.weight*other.weight)
+        if isinstance(other, (int, float)):
+            root = type(self)._scalar_sum(self.root, other)
+            tree = type(self)(root=root,
+                              variables = set(self.variables),
+                              cardinalities = self.cardinalities,
+                              pruned = self.pruned,
+                              weight = self.weight * other)
+        else:
+            root = type(self)._sum(self.root, other.root)
+            tree = type(self)(root=root,
+                              variables= self.variables.union(other.variables),
+                              cardinalities=self._update_cardinality(other),
+                              pruned=self.pruned or other.pruned,
+                              weight = self.weight * other.weight)
+            
         if inplace:
             self = tree
 
@@ -871,9 +893,15 @@ class TableTree(Tree):
         
         
     def unprune(self):
-        """"Restore tree structure for easier modifications."""
+        """Restore tree structure for easier modifications."""
         self.root = self._unprune(self.root, set())
         self.pruned = False
+
+
+    def ravel(self):
+        """Analogous to numpy.ravel"""
+        return np.array([elem.value for elem in prod.values])
+
     
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
     """Square Euclidean distance between two trees.

@@ -140,11 +140,22 @@ class TreeTestCase():
             arr3 = arr1 + arr2
             tree3 = tree1 + tree2
             tree4 = tree2.sum(tree1)
+            tree5 = self.tree_creation(arr3, ['A', 'B'], card)
+            
+            self.assertEqual(tree5, tree3)
+            self.assertEqual(tree5, tree4)
 
-            self.assertEqual(self.tree_creation(arr3, ['A', 'B'], card),
-                             tree3)
-            self.assertEqual(self.tree_creation(arr3, ['A', 'B'], card),
-                             tree4)
+    def test_scalar_sum(self):
+        card = {'A': 2, 'B': 2, 'C': 2}
+        
+        arr1 = np.array([[1, 2], [2, 3]])
+        tree1 = self.tree_creation(arr1, ['A', 'B'], card)
+        tree1.sum(2)
+
+        arr2 = np.array([[1, 2], [2, 3]])+2
+        tree2 = self.tree_creation(arr1, ['A', 'B'], card)
+        
+        self.assertEqual(tree1, tree2)
 
     def test_marginalize(self):
         card = {'A': 2, 'B': 2}
