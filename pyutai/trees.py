@@ -65,6 +65,7 @@ string representing a number.
 class Element:
     """
     An element is a pair of a state of the variables of a potential, and the
+    associated value.
     """
     state: IndexSelection
     value: float

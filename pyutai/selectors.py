@@ -11,14 +11,14 @@ from scipy import stats
 
 import numpy as np
 
-from pyutai import values
+from pyutai import trees
 
 
 def _normalize(data: np.ndarray):
     return data / data.sum()
 
 
-def _filter(data: np.ndarray, selections: values.IndexSelection,
+def _filter(data: np.ndarray, selections: trees.IndexSelection,
             variables: List[str]):
     filter_ = tuple(
         slice(None) if var not in selections else selections[var]
@@ -41,13 +41,13 @@ def _restriction_iterator(data: np.ndarray, variable: int):
 def minimal_selector(data: np.ndarray,
                      variables: List[str],
                      _evaluator: Callable,
-                     normalize: bool = False) -> values.VarSelector:
+                     normalize: bool = False) -> trees.VarSelector:
     """Generates a VarSelector that minimizes _evaluator score.."""
 
     if normalize:
         data = _normalize(data)
 
-    def variable_selector(previous_selections: values.IndexSelection = None):
+    def variable_selector(previous_selections: trees.IndexSelection = None):
         if previous_selections is None:
             previous_selections = {}
 

@@ -7,7 +7,7 @@ import itertools
 import unittest
 import numpy as np
 
-from pyutai import values, nodes, selectors
+from pyutai import trees, nodes, selectors
 
 
 # class EntropySelectorTestCase(unittest.TestCase):

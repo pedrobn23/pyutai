@@ -13,11 +13,11 @@ from typing import Dict, Iterable, List
 
 import numpy as np
 
-from pyutai import values, distances, reductions
-
+from pyutai import distances
+from potentials import reductions, element
 
 @dataclasses.dataclass
-class Potential:
+class Cluster:
     """cluster.Potential defines a cluster-based potential.
 
     Attributes:
@@ -44,7 +44,7 @@ class Potential:
         raise ValueError('Index configuration not found.')
 
     @classmethod
-    def from_iterable(cls, iter_: Iterable[values.Element], variables,
+    def from_iterable(cls, iter_: Iterable[element.Element], variables,
                       cardinalities):
         """Create a cluster from a iterable object."""
         cluster = collections.defaultdict(set)
@@ -61,7 +61,7 @@ class Potential:
         """Adapter that creates new iterable from np.ndarray"""
         for position, value in np.ndenumerate(array):
             state = dict(zip(variables, position))
-            yield values.Element(value=value, state=state)
+            yield element.Element(value=value, state=state)
 
     @classmethod
     def from_array(cls, array: np.ndarray, variables=None):
@@ -82,7 +82,7 @@ class Potential:
     def _ordered_elements(self):
         cluster_values = sorted(list(self.clusters.keys()))
         elements = [
-            values.Element(state, value)
+            element.Element(state, value)
             for value in cluster_values
             for state in self.clusters[value]
         ]
@@ -119,12 +119,12 @@ class Potential:
         """Returns an iterator over the values of the Tree.
 
         Returns:
-            Element: with the configuration of states variables and the associated value.
+            element.Element: with the configuration of states variables and the associated value.
         """
         for value, cluster in self.clusters.items():
             for element in cluster:
                 indexes = dict(zip(self.variables, element))
-                yield values.Element(indexes, value)
+                yield element.Element(indexes, value)
 
     def array(self):
         """Return an np.ndarray with the elements of the cluster."""

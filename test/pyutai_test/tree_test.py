@@ -7,12 +7,12 @@ import itertools
 import unittest
 import numpy as np
 
-from pyutai import values, nodes
+from pyutai import trees, nodes
 
 
 class TreeTestCase():
     """
-    Test Class for values.Tree class.
+    Test Class for trees.Tree class.
     """
 
     def __init__(self, *args, **kwargs):
@@ -179,15 +179,15 @@ class TreeTestCase():
 
 class StandardTestCase(TreeTestCase, unittest.TestCase):
     """
-    Test Class for values.Tree class.
+    Test Class for trees.Tree class.
 
     """
     def tree_creation(self, arr, variables, cardinalities):
-        return values.Tree.from_array(arr, variables, cardinalities)
+        return trees.Tree.from_array(arr, variables, cardinalities)
 
     def test_prune(self):
         arr = np.array([[1, 6], [2, 2]])
-        tree = values.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
+        tree = trees.Tree.from_array(arr, ['0', '1'], {'0': 2, '1': 2})
         tree2 = tree.copy()
         
         self.assertEqual(tree.root.size(), 7)  # Complete node 4 + 2 + 1
@@ -206,29 +206,29 @@ class StandardTestCase(TreeTestCase, unittest.TestCase):
 
     def test_exceptions_from_array(self):
         with self.assertRaises(ValueError):
-            values.Tree.from_array(np.array([]), [], {})
+            trees.Tree.from_array(np.array([]), [], {})
         with self.assertRaises(ValueError):
-            values.Tree.from_array(np.array([1]), ['A'], {'A': 2})
+            trees.Tree.from_array(np.array([1]), ['A'], {'A': 2})
 
 class TableTreeTestCase(TreeTestCase, unittest.TestCase):
     """
-    Test Class for values.Tree class.
+    Test Class for trees.Tree class.
 
     """
     def tree_creation(self, arr, variables, cardinalities, *, table_size = 1):
-        return values.TableTree.from_array(arr, variables)
+        return trees.TableTree.from_array(arr, variables)
 
 
 
     def test_exceptions_from_array(self):
         with self.assertRaises(ValueError):
-            values.TableTree.from_array(np.array([]), [])
+            trees.TableTree.from_array(np.array([]), [])
         with self.assertRaises(ValueError):
-            values.TableTree.from_array(np.array([1]), ['A', 'B'])
+            trees.TableTree.from_array(np.array([1]), ['A', 'B'])
 
     def test_prune(self):
         arr = np.array([[1, 1], [1, 1]])
-        tree = values.TableTree.from_array(arr, ['0', '1'], table_size = 1)
+        tree = trees.TableTree.from_array(arr, ['0', '1'], table_size = 1)
         tree2 = tree.copy()
 
 

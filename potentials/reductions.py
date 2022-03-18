@@ -13,8 +13,8 @@ from typing import Callable, List
 import tqdm
 import numpy as np
 
-from pyutai import values, distances
-
+from pyutai import distances
+from potentials import cluster, element
 
 def _select_best_option(element, cluster, errors, distance):
     """Select the best options to distribute elements into cluster"""
@@ -54,7 +54,7 @@ def _cluster_list(indexes):
     return clusters
 
 
-def optimal_cluster(elements: List[values.Element],
+def optimal_cluster(elements: List[element.Element],
                     clusters: int,
                     *,
                     distance: Callable = None,

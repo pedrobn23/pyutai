@@ -18,4 +18,5 @@ if __name__ == '__main__':
 
     result = unittest.TestResult()
     suite().run(result)
+        
     sys.exit(len(result.errors) + len(result.failures))  # Correct exitcode

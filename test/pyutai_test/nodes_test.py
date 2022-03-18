@@ -5,7 +5,7 @@ import itertools
 import unittest
 import numpy as np
 
-from pyutai import values, nodes
+from pyutai import trees, nodes
 
 
 class NodesTestCase(unittest.TestCase):
@@ -23,7 +23,7 @@ class NodesTestCase(unittest.TestCase):
 
         self.cardinalities = {'A': 2, 'B': 3, 'C': 2}
         self.branch_nodes = [
-            values.Tree.from_array(arr, variables, self.cardinalities).root
+            trees.Tree.from_array(arr, variables, self.cardinalities).root
             for arr, variables in zip(self.arrays, self.variables)
         ]
 
@@ -34,7 +34,7 @@ class NodesTestCase(unittest.TestCase):
 
     def test_equality(self):
         other_branch_nodes = [
-            values.Tree.from_array(arr, variables, self.cardinalities).root
+            trees.Tree.from_array(arr, variables, self.cardinalities).root
             for arr, variables in zip(self.arrays, self.variables)
         ]
         for nodeA, nodeB in zip(self.branch_nodes, other_branch_nodes):
