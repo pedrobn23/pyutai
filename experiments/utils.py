@@ -1,7 +1,7 @@
 import numpy as np
 
-from pyutai import values
-
+from pyutai import trees
+from potentials import cluster
 
 def cpd_size(cpd):
     return np.prod(cpd.cardinality)
@@ -37,7 +37,10 @@ def tree_from_cpd(cpd, selector):
         selector = selector(cpd.values, cpd.variables)
 
     cardinality_ = dict(zip(cpd.variables, cpd.cardinality))
-    return values.Tree.from_array(cpd.values,
-                                  cpd.variables,
-                                  cardinality_,
-                                  selector=selector)
+    return trees.Tree.from_array(cpd.values,
+                                 cpd.variables,
+                                 cardinality_,
+                                 selector=selector)
+def cluster_from_cpd(cpd):
+    return cluster.Cluster.from_array(cpd.values,
+                                      cpd.variables)

@@ -18,7 +18,7 @@ from potentials import reductions, element
 
 @dataclasses.dataclass
 class Cluster:
-    """cluster.Potential defines a cluster-based potential.
+    """Cluster defines a cluster-based potential.
 
     Attributes:
         clusters: clusters is a dictionary from the value to the set of
@@ -46,11 +46,14 @@ class Cluster:
     @classmethod
     def from_iterable(cls, iter_: Iterable[element.Element], variables,
                       cardinalities):
-        """Create a cluster from a iterable object."""
+        """Create a cluster from a iterable object of dict."""
         cluster = collections.defaultdict(set)
         for element in iter_:
             # Transfor the assigment into a tuple for it to be hashable
-            state = tuple(element.state[var] for var in variables)
+            if isinstance(element.state, dict):
+                state = tuple(element.state[var] for var in variables)
+            else:
+                state = element.state
 
             cluster[element.value].add(state)
 
@@ -60,8 +63,7 @@ class Cluster:
     def _iterable_from_array(array: np.ndarray, variables: List[str]):
         """Adapter that creates new iterable from np.ndarray"""
         for position, value in np.ndenumerate(array):
-            state = dict(zip(variables, position))
-            yield element.Element(value=value, state=state)
+            yield element.Element(value=value, state=position)
 
     @classmethod
     def from_array(cls, array: np.ndarray, variables=None):
