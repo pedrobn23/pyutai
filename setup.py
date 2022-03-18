@@ -5,17 +5,17 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyutai",
-    version="0.0.2",
+    version="0.1.6.6",
     author="UTAI Group",
     description="A Python implementation of Potentials Tree.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/google/glome",
-    packages=["pyglome"],
+    url="https://github.com/pedrobn/pyutai",
+    packages=["pyutai"],
     install_requires=[
-        "pgpmpy",
+        "pgmpy",
         "numpy",
-        "pandas",
+        "pandas"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

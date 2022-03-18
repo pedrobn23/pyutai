@@ -8,8 +8,7 @@ import numpy as np
 import statistics
 import unittest
 
-from pyutai import values, nodes, cluster, distances
-
+from pyutai import trees, nodes, distances
 
 class EUDistanceTestCase(unittest.TestCase):
     """
@@ -20,7 +19,7 @@ class EUDistanceTestCase(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.arrays = [[1, 2, 3, 4, 97, 23, 27, 4, 12], [0, 0, 0, 0, 1]]
         self.elements_list = [[
-            values.Element(state=i, value=val) for i, val in enumerate(arr)
+            trees.Element(state=i, value=val) for i, val in enumerate(arr)
         ] for arr in self.arrays]
 
     def test_eculidean_step(self):
@@ -61,7 +60,7 @@ class KLDistanceTestCase(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.arrays = [[1, 2, 3, 4, 97, 23, 27, 4, 12], [0, 0, 0, 0, 1]]
         self.elements_list = [[
-            values.Element(state=i, value=val) for i, val in enumerate(arr)
+            trees.Element(state=i, value=val) for i, val in enumerate(arr)
         ] for arr in self.arrays]
 
     def test_kullback_step(self):

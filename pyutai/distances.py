@@ -12,14 +12,14 @@ import itertools
 
 import numpy as np
 
-from pyutai import values
+from pyutai import trees
 
 
 def _euclidean_step():
     """Returns a closure that progresively compute the error of the cluster.
 
 
-    Returns a closure[2] that receives values.Element object, and compute
+    Returns a closure[2] that receives trees.Element object, and compute
     the quadratic error to the mean. Each call runs in O(1). Step formula
     is based on [1, p.11]
 
@@ -31,11 +31,11 @@ def _euclidean_step():
     >>> cluster_error = distances._euclidean_step()
 
     # Error of cluster {0}
-    >>> cluster_error(values.Element({'A':0},1))
+    >>> cluster_error(trees.Element({'A':0},1))
     0.0
 
     # Error of cluster {0,1}
-    >>> cluster_error(values.Element({'A':1},2))
+    >>> cluster_error(trees.Element({'A':1},2))
     0.5
     """
 
@@ -45,7 +45,7 @@ def _euclidean_step():
     element_count = 0
     total_weight = 0
 
-    def function(element: values.Element):
+    def function(element: trees.Element):
         nonlocal error, median, element_count, total_weight
 
         element_count += 1
@@ -64,7 +64,7 @@ def _euclidean_step():
 def _kullback_step():
     """Returns a closure that progresively compute the error of the cluster.
 
-    Returns a closure[2] that receives values.Element object, and compute
+    Returns a closure[2] that receives trees.Element object, and compute
     the quadratic error to the mean. Each call runs in O(1). Step formula
     is based on [1, p.11]
 
@@ -76,11 +76,11 @@ def _kullback_step():
     >>> cluster_error = distances._kullback_step()
 
     # Error of cluster {1}
-    >>> cluster_error(values.Element({'A':0},1))
+    >>> cluster_error(trees.Element({'A':0},1))
     0.0
 
     # Error of cluster {0, 1}
-    >>> cluster_error(values.Element({'A':1},0))
+    >>> cluster_error(trees.Element({'A':1},0))
     0.6931471805599453
     """
 
@@ -90,7 +90,7 @@ def _kullback_step():
     element_count = 0
     total_weight = 0
 
-    def function(element: values.Element):
+    def function(element: trees.Element):
         nonlocal error, median, element_count, total_weight
 
         if element.value < 0:
@@ -109,8 +109,7 @@ def _kullback_step():
             error = element.value * math.log(element.value / new_median)
 
         elif median != 0 and element.value == 0:
-            error += total_weight * math.log(
-                median / new_median)
+            error += total_weight * math.log(median / new_median)
 
         else:
             error += total_weight * math.log(
@@ -140,7 +139,7 @@ def _iterative(elements, _step):
                                               len(elements)):
             distances[(start, stop)] = cluster_error(element)
 
-    def closure(start : int, stop: int):
+    def closure(start: int, stop: int):
         """Return the error of a cluster from elements start to stop.
 
         closure(i,j) is equal to distance(elemenst[i,j], [mean]*(j-1)).
@@ -148,7 +147,9 @@ def _iterative(elements, _step):
         return a memoized distance.
         """
         return distances[start, stop - 1]
+
     return closure
+
 
 def iterative_euclidean(elements):
     """Return the error of a cluster from elements start to stop.
