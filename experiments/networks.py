@@ -1,8 +1,7 @@
 import os
 import numpy as np
 
-from pyutai import read
-from experiments import utils
+from experiments import read, utils
 
 
 PATH = 'networks'
@@ -42,3 +41,13 @@ def example(*, n_variables=6):
      	 if utils.unique_values(cpd) < 3000 and len(cpd.values.shape) == n_variables:
              yield (0, cpd)
              return
+
+
+def medical():
+    for net in ['alarm.bif', 'hepar2.bif', 'munin.bif', 'pathfinder.bif']:
+        fullpath = os.path.join(PATH, net)
+        file_ = read.read(fullpath)
+        model = file_.get_model()
+        cpds = model.get_cpds()
+        for cpd in cpds:
+            yield cpd

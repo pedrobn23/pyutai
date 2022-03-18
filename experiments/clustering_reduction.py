@@ -7,43 +7,8 @@ import statistics
 
 import numpy as np
 
-from experiments import utils, networks
-from pyutai import read, cluster, values, selectors
-
-# def _cluster_experiment(test_set):
-#     differences = []
-
-#     for cpd in test_set:
-#         tree = utils.tree_from_cpd(cpd)
-#         variables = cpd.variables
-#         cluster_ = cluster.Potential.from_tree(tree)
-#         length = len(cluster_.clusters)
-
-#         if length > 1:
-#             print('\n ------ \n')
-#             print(f'Prior cluster size: {length}.')
-#             print(f'Tree prior unpruned: {tree.size()}.')
-
-#             tree.prune()
-#             tree1size = tree.size()
-#             print(f'Tree prior pruned: {tree1size}.')
-
-#             reduced_cluster = cluster_.reduce_cluster(length // 2)
-#             reduced_length = len(reduced_cluster.clusters)
-#             print(f'Post cluster size: {reduced_length}.')
-
-#             tree2 = utils.tree_from_cluster(reduced_cluster, variables,
-#                                        selectors.variance)
-#             tree2.prune()
-#             tree2size = tree2.size()
-
-#             print(f'Tree post pruned: {tree2size}.')
-#             print(f'    - diference: {tree1size - tree2size}.')
-
-#             differences.append(tree1size - tree2size)
-
-#     print(statistics.mean(differences))
-
+from experiments import utils, networks, read
+from pyutai import selectors
 
 def _pruning_experiments(countered_cpds):
 
@@ -74,7 +39,6 @@ def _pruning_experiments(countered_cpds):
 
 
 if __name__ == '__main__':
-    # _pruning_experiments(networks.smalls())
     fault_examples = [
         4, 11, 13, 23, 27, 32, 33, 54, 59, 61, 66, 70, 72, 74, 77, 78, 79, 80,
         81, 82, 83, 86, 87, 88, 92, 94, 98, 100, 102, 103, 104, 105, 106, 107,
