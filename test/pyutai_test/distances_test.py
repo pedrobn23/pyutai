@@ -10,6 +10,7 @@ import unittest
 
 from pyutai import trees, nodes, distances
 
+
 class EUDistanceTestCase(unittest.TestCase):
     """
     Test Class for distances.iterative_euclidean()
@@ -47,8 +48,7 @@ def _kullback(elements):
     """Helper to check Kullback-Leibler distance."""
     mean = statistics.mean(elements)
     return sum(element * (math.log(element) - math.log(mean))
-               for element in elements
-               if element != 0)
+               for element in elements if element != 0)
 
 
 class KLDistanceTestCase(unittest.TestCase):

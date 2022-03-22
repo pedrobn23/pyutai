@@ -118,8 +118,8 @@ class BranchNode(Node):
     def __eq__(self, other: Node):
         if not other.is_terminal():
             if len(other.children) == len(self.children):
-                return all(
-                    a == b for a, b in zip(self.children, other.children))
+                return all(a == b
+                           for a, b in zip(self.children, other.children))
 
         return False
 
@@ -164,12 +164,12 @@ class LeafNode(Node):
         """Return a hard copy of the node"""
         return self.__deepcopy__({})
 
-    def access(self, states : Dict[str, int]):
+    def access(self, states: Dict[str, int]):
         return self.value
 
-    def set(self, value : float, _):
+    def set(self, value: float, _):
         self.value = value
-    
+
     def restrict(self, _: Dict[str, int]):
         """Restrict variables to provided values.
 
@@ -197,7 +197,7 @@ class LeafNode(Node):
         if isinstance(other, (int, float)):
             return type(self)(value=self.value + other)
         else:
-            return type(self)(value=self.value + other.value) 
+            return type(self)(value=self.value + other.value)
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -213,7 +213,7 @@ class LeafNode(Node):
         if isinstance(other, (int, float)):
             return type(self)(value=self.value * other)
         else:
-            return type(self)(value=self.value * other.value) 
+            return type(self)(value=self.value * other.value)
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -275,16 +275,14 @@ class TableNode(Node):
         """Return a hard copy of the node"""
         return self.__deepcopy__({})
 
-
-    def access(self, states : Dict[str, int]):
+    def access(self, states: Dict[str, int]):
         filter_ = tuple(states[var] for var in self.variables)
         return self.values[filter_]
 
-    def set(self, value:float, states : Dict[str, int]):
+    def set(self, value: float, states: Dict[str, int]):
         filter_ = tuple(states[var] for var in self.variables)
         self.values[filter_] = value
-    
-    
+
     def restrict(self, restrictions: Dict[str, int]):
         """Restrict variables to provided values"""
         node = self.copy()
@@ -301,7 +299,6 @@ class TableNode(Node):
 
         return node
 
-    
     # TODO: Important, make inplace option
     def marginalize(self, variable, cardinalities):
         # If variable is not pressent
@@ -361,7 +358,7 @@ class TableNode(Node):
         return result
 
     def _product(self, other, *, inplace=False):
-        """Based on pgmpy sum method[1]."""           
+        """Based on pgmpy sum method[1]."""
         result = type(self)._extend_new_variables(self, other)
 
         other_values = type(self)._extend_new_variables(other, self)
@@ -377,8 +374,8 @@ class TableNode(Node):
 
     def __mul__(self, other):
         if isinstance(other, (int, float)):
-            return type(self)(values = self.values * other,
-                              variables = list(self.variables))
+            return type(self)(values=self.values * other,
+                              variables=list(self.variables))
         else:
             return self._product(other, inplace=False)
 
@@ -394,8 +391,8 @@ class TableNode(Node):
 
     def __add__(self, other):
         if isinstance(other, (int, float)):
-            return type(self)(values = self.values + other,
-                              variables = list(self.variables))
+            return type(self)(values=self.values + other,
+                              variables=list(self.variables))
         else:
             return self._sum(other, inplace=False)
 

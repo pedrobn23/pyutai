@@ -17,7 +17,6 @@ from pyutai import distances
 from potentials import reductions, element
 
 
-    
 @dataclasses.dataclass
 class IndexPairs:
     """
@@ -39,13 +38,14 @@ class IndexPairs:
         try:
             return self.values[self.references[indexes]]
         except KeyError as ke:
-            raise  ValueError(f'Index configuration {zip(self.variables, indexes)} not found.') 
+            raise ValueError(
+                f'Index configuration {zip(self.variables, indexes)} not found.'
+            )
 
     def __iter__(self):
         for state, reference in self.references.items():
             value = self.values[reference]
             yield element.TupleElement(state, value)
-
 
     def array(self):
         """Return an np.ndarray with the elements of the cluster."""
@@ -60,7 +60,7 @@ class IndexPairs:
 
     @classmethod
     def from_iterable(cls, iter_: Iterable[element.Element], variables,
-                   cardinalities):
+                      cardinalities):
         """Create a cluster from a iterable object."""
 
         values = {}
@@ -74,7 +74,7 @@ class IndexPairs:
             if element.value not in references:
                 references.append(element.value)
             values[state] = references.index(element.value)
-    
+
         return cls(values, references, variables, cardinalities)
 
     @staticmethod

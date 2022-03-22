@@ -12,10 +12,12 @@ import unittest
 from pyutai import trees, nodes, distances
 from potentials import cluster, element
 
+
 class ClusterImplementationCase(unittest.TestCase):
     """
     Test Class for cluster.Cluster class.
     """
+
     def test_from_iterables(self):
         iterable = [
             element.Element(value=0.25, state={
@@ -31,13 +33,14 @@ class ClusterImplementationCase(unittest.TestCase):
                 'B': 0
             })
         ]
+
         dictionary = {0.25: {(1, 0), (0, 0)}, 0.5: {(2, 0)}}
         test = cluster.Cluster.from_iterable(iterable,
-                                               variables=['A', 'B'],
-                                               cardinalities={
-                                                   'A': 3,
-                                                   'B': 1
-                                               })
+                                             variables=['A', 'B'],
+                                             cardinalities={
+                                                 'A': 3,
+                                                 'B': 1
+                                             })
 
         # Test equality by double inclusion
         for value in dictionary:

@@ -87,9 +87,8 @@ class Tree:
     root: nodes.Node
     variables: Set[str]
     cardinalities: Dict[str, int]
-    pruned : bool = False
-    weight : float = None 
-
+    pruned: bool = False
+    weight: float = None
 
     def __post_init__(self):
         # Fallback case
@@ -97,14 +96,12 @@ class Tree:
         if self.weight is None:
             self.weight = sum(elem.value for elem in self)
 
-    
     @classmethod
     def _from_callable(cls,
                        data: DataAccessor,
                        variables: List[str],
                        cardinalities: Dict[str, int],
                        assigned_vars: Dict[str, int],
-
                        *,
                        selector: VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_callable method.
@@ -130,10 +127,10 @@ class Tree:
                 new_assigned_vars = dict(assigned_vars)
                 new_assigned_vars[next_var] = i
                 child = cls._from_callable(data=data,
-                                            variables=variables,
-                                            cardinalities=cardinalities,
-                                            assigned_vars=new_assigned_vars,
-                                            selector=selector)
+                                           variables=variables,
+                                           cardinalities=cardinalities,
+                                           assigned_vars=new_assigned_vars,
+                                           selector=selector)
                 children.append(child)
 
             return nodes.BranchNode(next_var, children)
@@ -145,7 +142,7 @@ class Tree:
                       cardinalities: Dict[str, int],
                       *,
                       selector: VarSelector = None,
-                      weight : float = None):
+                      weight: float = None):
         """Create a Tree from a callable.
 
         Read a potential from a given callable, and store it in a value tree.
@@ -162,10 +159,10 @@ class Tree:
                 See VarSelector type for more information.
         """
         root = cls._from_callable(data=data,
-                                   variables=variables,
-                                   cardinalities=cardinalities,
-                                   assigned_vars={},
-                                   selector=selector)
+                                  variables=variables,
+                                  cardinalities=cardinalities,
+                                  assigned_vars={},
+                                  selector=selector)
         return cls(root=root,
                    variables=set(variables),
                    cardinalities=cardinalities,
@@ -200,11 +197,11 @@ class Tree:
         if data.size == 0:
             raise ValueError('Array should be non-empty')
 
-
         if len(data.shape) != len(variables):
-            raise ValueError(f'Array shape does not match number of variables' +
-                             f'provided.\nArray shape: {data}, ' +
-                             f'variables: {variables}.')
+            raise ValueError(
+                f'Array shape does not match number of variables' +
+                f'provided.\nArray shape: {data}, ' +
+                f'variables: {variables}.')
 
         for index, var in enumerate(variables):
             if data.shape[index] != cardinalities[var]:
@@ -237,14 +234,15 @@ class Tree:
         try:
             variables.sort()
         except TypeError as type_error:
-            warnings.warn('As variables are not suitable to ordering, iteration order may vary.')
+            warnings.warn(
+                'As variables are not suitable to ordering, iteration order may vary.'
+            )
 
         shape = tuple(self.cardinalities[var] for var in variables)
-        
+
         for states in np.ndindex(shape):
             indexes = dict(zip(variables, states))
             yield Element(indexes, self.access(indexes))
-
 
     def array(self):
         variables = list(self.variables)
@@ -252,14 +250,13 @@ class Tree:
 
         shape = tuple(self.cardinalities[var] for var in variables)
         result = np.zeros(shape)
-        
+
         for states in np.ndindex(shape):
-            indexes = dict(zip(self.variables, states))            
+            indexes = dict(zip(self.variables, states))
             result[states] = self.access(indexes)
 
         return result
-        
-            
+
     def __deepcopy__(self, memo):
         """Deepcopy the provided tree. Beaware that cardinalities is assumed to be shared
         globaly within all trees, so it is not copied.
@@ -281,7 +278,7 @@ class Tree:
             Tree: deepcopy of the tree.
         """
         return self.__deepcopy__({})
-    
+
     def size(self):
         """Number of nodes contained in the tree. May varies upon pruning.
 
@@ -306,32 +303,39 @@ class Tree:
 
             return node
 
-    
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches."""
         self.root = type(self)._prune(self.root)
         self.pruned = True
-        
+
     @classmethod
-    def _expand_node(cls, value : float, rest: set, cardinalities : Dict[str, int]):
+    def _expand_node(cls, value: float, rest: set, cardinalities: Dict[str,
+                                                                       int]):
         """Auxliar function that reexpand a previously prunned node."""
         if rest:
             var = rest.pop()
-            children = [cls._expand_node(value, set(rest), cardinalities) for _ in range(cardinalities[var])]
+            children = [
+                cls._expand_node(value, set(rest), cardinalities)
+                for _ in range(cardinalities[var])
+            ]
             return nodes.BranchNode(var, children)
 
         else:
             return nodes.LeafNode(value)
 
-    def _unprune(self, node: nodes.Node, assigned : set):
+    def _unprune(self, node: nodes.Node, assigned: set):
         """Auxiliar, tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
         if not node.is_terminal():
-            node.children = [self._unprune(child, assigned.union({node.name}))
-                             for child in node.children]
+            node.children = [
+                self._unprune(child, assigned.union({node.name}))
+                for child in node.children
+            ]
             return node
         elif assigned != self.variables:
-            return type(self)._expand_node(node.value, self.variables.difference(assigned), self.cardinalities)
+            return type(self)._expand_node(node.value,
+                                           self.variables.difference(assigned),
+                                           self.cardinalities)
         else:
             return node
 
@@ -339,7 +343,7 @@ class Tree:
         """"Restore tree structure for easier modifications."""
         self.root = self._unprune(self.root, set())
         self.pruned = False
-        
+
     @staticmethod
     def _access(node: nodes.Node, states: IndexSelection) -> float:
         """Helper method for access function."""
@@ -369,8 +373,8 @@ class Tree:
         """
 
         for var in states:
-            if (state := states[var]) >= (bound :=
-                                          self.cardinalities[var]) or state < 0:
+            if (state := states[var]) >= (
+                    bound := self.cardinalities[var]) or state < 0:
                 raise ValueError(f'State for variable {var} is out of bound;' +
                                  f'expected state in interval:[0,{bound}),' +
                                  f'received: {state}.')
@@ -383,17 +387,16 @@ class Tree:
         return value
 
     @staticmethod
-    def _set(node: nodes.Node, states: IndexSelection, value : float):
+    def _set(node: nodes.Node, states: IndexSelection, value: float):
         """Helper method for access function."""
         while not node.is_terminal():
             var = node.name
             state = states[var]
             node = node.children[state]
-            
+
         return node.set(value, states)
 
-    
-    def set(self, states: IndexSelection, value : float):
+    def set(self, states: IndexSelection, value: float):
         """Set the value associated with a given series of states.
 
         Set a value for a given state configuration. 
@@ -414,8 +417,8 @@ class Tree:
         """
 
         for var in states:
-            if (state := states[var]) >= (bound :=
-                                          self.cardinalities[var]) or state < 0:
+            if (state := states[var]) >= (
+                    bound := self.cardinalities[var]) or state < 0:
                 raise ValueError(f'State for variable {var} is out of bound;' +
                                  f'expected state in interval:[0,{bound}),' +
                                  f'received: {state}.')
@@ -427,16 +430,12 @@ class Tree:
             old_value = self.access(states)
             type(self)._set(self.root, states, value)
             self.weight += (value - old_value)
-            
+
         except KeyError as key_error:
             raise ValueError(
                 f'State configuration {states} does not have' +
                 f'enough information to select one value.') from key_error
 
-
-        
-        
-        
     #TODO: separate inplace and copy style
     @classmethod
     def _restrict(cls, node: nodes.Node, restrictions: IntexType):
@@ -485,7 +484,6 @@ class Tree:
                               cardinalities=self.cardinalities,
                               pruned=self.pruned)
 
-
     def _update_cardinality(self, other):
         """Helper to make cardinality update in old python versions."""
 
@@ -497,7 +495,7 @@ class Tree:
                 if var not in result:
                     result[var] = value
         return result
-                
+
     @classmethod
     def _scalar_product(cls, node, other):
         """Tail-recursion helper."""
@@ -527,7 +525,6 @@ class Tree:
                 elif node.value == 1:
                     return copy.deepcopy(other)
 
-                
             # General case - interchange order
             return cls._product(other, node)
 
@@ -557,18 +554,17 @@ class Tree:
         if isinstance(other, (int, float)):
             root = type(self)._scalar_product(self.root, other)
             tree = type(self)(root=root,
-                              variables = set(self.variables),
-                              cardinalities = self.cardinalities,
-                              pruned = self.pruned,
-                              weight = self.weight * other)
+                              variables=set(self.variables),
+                              cardinalities=self.cardinalities,
+                              pruned=self.pruned,
+                              weight=self.weight * other)
         else:
             root = type(self)._product(self.root, other.root)
             tree = type(self)(root=root,
-                              variables= self.variables.union(other.variables),
+                              variables=self.variables.union(other.variables),
                               cardinalities=self._update_cardinality(other),
                               pruned=self.pruned or other.pruned,
-                              weight = self.weight * other.weight)
-
+                              weight=self.weight * other.weight)
 
         if inplace:
             self = tree
@@ -583,7 +579,7 @@ class Tree:
 
     def __imul__(self, other):
         return self.product(other, inplace=True)
-                
+
     @classmethod
     def _scalar_sum(cls, node, other):
         """Tail-recursion helper."""
@@ -599,7 +595,6 @@ class Tree:
 
             return nodes.BranchNode(var, children)
 
-    
     @classmethod
     def _sum(cls, node, other):
         """Tail-recursion helper."""
@@ -642,18 +637,18 @@ class Tree:
         if isinstance(other, (int, float)):
             root = type(self)._scalar_sum(self.root, other)
             tree = type(self)(root=root,
-                              variables = set(self.variables),
-                              cardinalities = self.cardinalities,
-                              pruned = self.pruned,
-                              weight = self.weight * other)
+                              variables=set(self.variables),
+                              cardinalities=self.cardinalities,
+                              pruned=self.pruned,
+                              weight=self.weight * other)
         else:
             root = type(self)._sum(self.root, other.root)
             tree = type(self)(root=root,
-                              variables= self.variables.union(other.variables),
+                              variables=self.variables.union(other.variables),
                               cardinalities=self._update_cardinality(other),
                               pruned=self.pruned or other.pruned,
-                              weight = self.weight * other.weight)
-            
+                              weight=self.weight * other.weight)
+
         if inplace:
             self = tree
 
@@ -669,7 +664,8 @@ class Tree:
         return self.sum(other, inplace=True)
 
     @classmethod
-    def _marginalize(cls, node: nodes.Node, variable: str, cardinalities : Dict[str, int]):
+    def _marginalize(cls, node: nodes.Node, variable: str,
+                     cardinalities: Dict[str, int]):
         if node.is_terminal():
             return node.marginalize(variable, cardinalities)
 
@@ -678,7 +674,8 @@ class Tree:
                 return functools.reduce(cls._sum, node.children)
             else:
                 children = [
-                    cls._marginalize(child, variable, cardinalities) for child in node.children
+                    cls._marginalize(child, variable, cardinalities)
+                    for child in node.children
                 ]
                 return nodes.BranchNode(node.name, children)
 
@@ -711,8 +708,9 @@ class Tree:
         return tree
 
     def __eq__(self, other):
-        warnings.warn('This method perform value-wise comprasion, this being a'+
-                      'potentially highly inefficient method [O(n^2)].')
+        warnings.warn(
+            'This method perform value-wise comprasion, this being a' +
+            'potentially highly inefficient method [O(n^2)].')
 
         if not isinstance(other, type(self)):
             return False
@@ -727,30 +725,30 @@ class Tree:
         # using this to avoid floating point error
         if abs(self.weight - other.weight) > 10**5:
             return False
-            
+
         for element in self:
             if other.access(element.state) != element.value:
                 return False
 
         return True
 
-        
 
 class TableTree(Tree):
+
     @staticmethod
-    def _restrict_table(data: np.ndarray, variables : List[str], assigned: Dict[str, int]):
+    def _restrict_table(data: np.ndarray, variables: List[str],
+                        assigned: Dict[str, int]):
         """Restrict variables to provided values"""
 
-        filter_ = tuple(
-            assigned[var] if var in assigned else slice(None)
-            for var in variables)
+        filter_ = tuple(assigned[var] if var in assigned else slice(None)
+                        for var in variables)
 
         new_data = data[filter_]
 
         new_variables = [var for var in variables if var not in assigned]
 
         return new_data, new_variables
-    
+
     @classmethod
     def _from_array(cls,
                     data: np.ndarray,
@@ -758,7 +756,7 @@ class TableTree(Tree):
                     cardinalities: Dict[str, int],
                     assigned_vars: Dict[str, int],
                     *,
-                    table_size : int = 5,
+                    table_size: int = 5,
                     selector: VarSelector = None) -> nodes.Node:
         """Auxiliar function for tail recursion in from_callable method.
 
@@ -770,8 +768,9 @@ class TableTree(Tree):
             selector = lambda assigned_vars: variables[len(assigned_vars)]
 
         # If every variable is already selected
-        if len(variables) <= len(assigned_vars)+table_size:
-            node_values, node_variables = cls._restrict_table(data, variables, assigned_vars) 
+        if len(variables) <= len(assigned_vars) + table_size:
+            node_values, node_variables = cls._restrict_table(
+                data, variables, assigned_vars)
             return nodes.TableNode(node_values, node_variables)
 
         else:
@@ -798,7 +797,7 @@ class TableTree(Tree):
                    data: np.ndarray,
                    variables: List[str],
                    *,
-                   table_size : int = 1,
+                   table_size: int = 1,
                    selector: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
 
@@ -822,9 +821,10 @@ class TableTree(Tree):
             raise ValueError('Array should be non-empty')
 
         if len(data.shape) != len(variables):
-            raise ValueError(f'Array shape does not match number of variables' +
-                             f'provided.\nArray shape: {data}, ' +
-                             f'variables: {variables}.')
+            raise ValueError(
+                f'Array shape does not match number of variables' +
+                f'provided.\nArray shape: {data}, ' +
+                f'variables: {variables}.')
 
         cardinalities = dict(zip(variables, data.shape))
 
@@ -832,7 +832,7 @@ class TableTree(Tree):
                                variables=variables,
                                cardinalities=cardinalities,
                                assigned_vars={},
-                               table_size=table_size, 
+                               table_size=table_size,
                                selector=selector)
         return cls(root=root,
                    variables=set(variables),
@@ -850,60 +850,65 @@ class TableTree(Tree):
 
             if not node.children:
                 raise ValueError('Children vector should not be empty.')
-                
+
             if all(child.is_terminal() for child in node.children):
                 for child in node.children:
                     if node.children[0] != child:
                         return node
-                    # In this case every child is equal to children[0] 
+                    # In this case every child is equal to children[0]
                 return node.children[0].copy()
 
             return node
-        
+
     def prune(self):
         """"Reduces the size of the tree by erasing duplicated branches."""
         self.root = self._prune(self.root)
         self.pruned = True
-        
+
     @classmethod
-    def _expand_node(cls, node : nodes.TableNode, rest: set, cardinalities : Dict[str, int]):
+    def _expand_node(cls, node: nodes.TableNode, rest: set,
+                     cardinalities: Dict[str, int]):
         """Auxliar function that reexpand a previously prunned node."""
         if rest:
             var = rest.pop()
-            children = [cls._expand_node(node, set(rest), cardinalities) for _ in range(cardinalities[var])]
+            children = [
+                cls._expand_node(node, set(rest), cardinalities)
+                for _ in range(cardinalities[var])
+            ]
             return nodes.BranchNode(var, children)
 
         else:
             return node.copy()
 
-        
-    def _unprune(self, node: nodes.Node, assigned : set):
+    def _unprune(self, node: nodes.Node, assigned: set):
         """Auxiliar, tail-recursion function that consider if two children are equal, in
         which case it unifies them under the same reference."""
         if not node.is_terminal():
-            node.children = [self._unprune(child, assigned.union({node.name}))
-                             for child in node.children]
+            node.children = [
+                self._unprune(child, assigned.union({node.name}))
+                for child in node.children
+            ]
             return node
 
         elif len(assigned) + len(node.variables) != self.variables:
-            variables_left = self.variables.difference(set(node.variables).union(assigned))            
-            return type(self)._expand_node(node, variables_left, self.cardinalities)
+            variables_left = self.variables.difference(
+                set(node.variables).union(assigned))
+            return type(self)._expand_node(node, variables_left,
+                                           self.cardinalities)
 
         else:
             return node
-        
-        
+
     def unprune(self):
         """Restore tree structure for easier modifications."""
         self.root = self._unprune(self.root, set())
         self.pruned = False
 
-
     def ravel(self):
         """Analogous to numpy.ravel"""
         return np.array([elem.value for elem in prod.values])
 
-    
+
 def sq_euclidean_distance(tree: Tree, other: Tree) -> float:
     """Square Euclidean distance between two trees.
 
@@ -932,4 +937,5 @@ def kullback_distance(tree: Tree, other: Tree):
         raise ValueError('Trees must share variables. Got:' +
                          f'{tree.variables}, {other.variables}.')
 
-    return sum(a.value * (np.log(a.value - b.value)) for a, b in zip(tree, other))
+    return sum(a.value * (np.log(a.value - b.value))
+               for a, b in zip(tree, other))

@@ -17,7 +17,8 @@ class NodesTestCase(unittest.TestCase):
         super().__init__(*args, **kwargs)
         self.arrays = [
             np.array([[1, 6, 3], [2, 2, 2]]),
-            np.array([[[1, 90876], [1, 7], [0, 0]], [[2, 34], [3, 23], [0, 0]]])
+            np.array([[[1, 90876], [1, 7], [0, 0]], [[2, 34], [3, 23], [0,
+                                                                        0]]])
         ]
         self.variables = [['A', 'B'], ['A', 'B', 'C']]
 
@@ -40,7 +41,9 @@ class NodesTestCase(unittest.TestCase):
         for nodeA, nodeB in zip(self.branch_nodes, other_branch_nodes):
             self.assertEqual(nodeA, nodeB)
 
-        other_leaf_nodes = [nodes.LeafNode(i) for i in range(self.n_leaf_nodes)]
+        other_leaf_nodes = [
+            nodes.LeafNode(i) for i in range(self.n_leaf_nodes)
+        ]
         for nodeA, nodeB in zip(self.leaf_nodes, other_leaf_nodes):
             self.assertEqual(nodeA, nodeB)
 
