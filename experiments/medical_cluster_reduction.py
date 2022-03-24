@@ -11,7 +11,6 @@ import numpy as np
 
 from experiments import utils, networks, read
 
-
 if __name__ == '__main__':
     fault_examples = [
         4, 11, 13, 23, 27, 32, 33, 54, 59, 61, 66, 70, 72, 74, 77, 78, 79, 80,
@@ -21,14 +20,17 @@ if __name__ == '__main__':
         241, 244
     ]
 
-
     for cpd in networks.medical():
         cluster = utils.cluster_from_cpd(cpd)
 
         n_clusters = len(cluster.clusters)
-        print(f'Prior to reduction: {n_clusters}, size = {sys.getsizeof(cluster)}')
+        print(
+            f'Prior to reduction: {n_clusters}, size = {sys.getsizeof(cluster)}'
+        )
 
         cluster = cluster.reduce_cluster(math.isqrt(n_clusters))
 
         n_clusters = len(cluster.clusters)
-        print(f'Successive to reduction:{n_clusters}, size = {sys.getsizeof(cluster)}')
+        print(
+            f'Successive to reduction:{n_clusters}, size = {sys.getsizeof(cluster)}'
+        )

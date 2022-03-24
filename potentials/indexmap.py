@@ -17,7 +17,6 @@ from pyutai import distances
 from potentials import reductions, element
 
 
-    
 @dataclasses.dataclass
 class IndexMap:
     """
@@ -38,8 +37,9 @@ class IndexMap:
         try:
             return self.values[indexes]
         except KeyError as ke:
-            raise  ValueError(f'Index configuration {zip(self.variables, indexes)} not found.') 
-                
+            raise ValueError(
+                f'Index configuration {zip(self.variables, indexes)} not found.'
+            )
 
     def __iter__(self):
         for state, value in self.values.items():
@@ -58,7 +58,7 @@ class IndexMap:
 
     @classmethod
     def from_iterable(cls, iter_: Iterable[element.Element], variables,
-                   cardinalities):
+                      cardinalities):
         """Create a cluster from a iterable object."""
 
         values = {}
@@ -67,7 +67,7 @@ class IndexMap:
                 state = tuple(element.state[var] for var in variables)
             else:
                 state = element.state
-                
+
             values[state] = element.value
         return cls(values, variables, cardinalities)
 

@@ -54,7 +54,10 @@ def minimal_selector(data: np.ndarray,
         filtered_data, filtered_variables = _filter(data, previous_selections,
                                                     variables)
 
-        results = [_evaluator(filtered_data, variable) for variable, _ in enumerate(filtered_variables)]
+        results = [
+            _evaluator(filtered_data, variable)
+            for variable, _ in enumerate(filtered_variables)
+        ]
         return filtered_variables[np.argmin(results)]
 
     return variable_selector
@@ -64,8 +67,10 @@ def variance(data: np.ndarray, variables: List[str]):
     """Generates a VarSelector based on the minimum entropy principle."""
 
     def variance_(data, variable):
-        return sum(restricted_data.var()**2
-                   for restricted_data in _restriction_iterator(data, variable))
+        return sum(
+            restricted_data.var()**2
+            for restricted_data in _restriction_iterator(data, variable))
+
     return minimal_selector(data, variables, variance_, normalize=False)
 
 
@@ -73,6 +78,8 @@ def entropy(data: np.ndarray, variables: List[str]):
     """Return a new VarSelector based on the minimun entropy principle."""
 
     def entropy_(data, variable):
-        return sum(stats.entropy(data.flatten())
-                   for restricted_data in _restriction_iterator(data, variable))  
+        return sum(
+            stats.entropy(data.flatten())
+            for restricted_data in _restriction_iterator(data, variable))
+
     return minimal_selector(data, variables, entropy_, normalize=True)

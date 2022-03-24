@@ -9,12 +9,20 @@ import dataclasses
 import itertools
 import statistics
 
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
 
 from pyutai import distances
-from potentials import reductions, element
+from potentials import reductions, element, utils
+from experiments import networks
+
+
+def _mean(elements: List[element.TupleElement], start: int, stop: int):
+    """return the mean value of the values from start to stop slice"""
+    return statistics.mean(
+        (e.value for e in itertools.islice(elements, start, stop)))
+
 
 @dataclasses.dataclass
 class Cluster:
@@ -76,44 +84,37 @@ class Cluster:
 
         return cls.from_iterable(iterable, variables, cardinalities)
 
-    @classmethod
-    def from_tree(cls, tree):
-        """create a cluster from a Tree"""
-        return cls.from_iterable(tree, list(tree.variables), tree.cardinalities)
-
     def _ordered_elements(self):
         cluster_values = sorted(list(self.clusters.keys()))
         elements = [
-            element.Element(state, value)
-            for value in cluster_values
+            element.Element(state, value) for value in cluster_values
             for state in self.clusters[value]
         ]
         return elements
 
-    @staticmethod
-    def _mean(elements, start, stop):
-        return statistics.mean(
-            (e.value for e in itertools.islice(elements, start, stop)))
+    def _new_clusters(elements: List[element.TupleElement],
+                      cluster_list: List[Tuple[int, int]]):
+        clusters = collections.defaultdict(set)
+        for start, stop in cluster_list:
+            value = _mean(elements, start, stop)
+            for element in itertools.islice(elements, start, stop):
+                clusters[value].add(element.state)
 
-    def reduce_cluster(self, clusters):
+    def reduce(self, n_clusters: int):
         """Create a new potential, with only <cluster> clusters.
 
         To make that it uses an optimal algorithm that select what is the
         aproximation that better reduce the euclidean distance.
         """
         elements = self._ordered_elements()
-        cluster_list = reductions.optimal_cluster(
-            elements,
-            clusters,
-            distance=distances.iterative_euclidean(elements))
+        reduction = reductions.Reduction.from_elements(elements,
+                                                       threshold=len(
+                                                           self.clusters))
 
-        clusters = collections.defaultdict(set)
-        for start, stop in cluster_list:
-            value = type(self)._mean(elements, start, stop)
-            for element in itertools.islice(elements, start, stop):
-                clusters[value].add(element.state)
+        cluster_list = reductions.optimal_partition(n_clusters)
+        clusters = self._new_clusters(elements, cluster_list)
 
-        return type(self)(clusters=clusters,
+        return type(self)(clusters=new_clusters,
                           variables=self.variables,
                           cardinalities=self.cardinalities)
 
@@ -139,3 +140,12 @@ class Cluster:
                 array[element] = value
 
         return array
+
+
+if __name__ == '__main__':
+    #    Programar experimento y dejarlo en casa
+    for cpd in networks.medical():
+        clt = cluster.Cluster.from_array(cpd.values, cpd.variables)
+
+        original_size = utils.total_size(clt)
+        # implementar error based cluster reduction

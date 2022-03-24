@@ -10,6 +10,7 @@ import numpy as np
 from experiments import utils, networks, read
 from pyutai import selectors
 
+
 def _pruning_experiments(countered_cpds):
 
     total_prunning = collections.defaultdict(int)
@@ -46,7 +47,6 @@ if __name__ == '__main__':
         190, 193, 194, 197, 210, 212, 217, 226, 227, 228, 232, 233, 236, 238,
         241, 244
     ]
-
 
     cpd = networks.small_selector(233)
     print(utils.unique_values(cpd))

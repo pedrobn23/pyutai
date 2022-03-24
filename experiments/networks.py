@@ -3,8 +3,8 @@ import numpy as np
 
 from experiments import read, utils
 
-
 PATH = 'networks'
+
 
 def all():
     counter = -1
@@ -17,30 +17,34 @@ def all():
                 counter += 1
                 yield (counter, cpd)
 
-def smalls(*, threshold=3000, round_ = True):
+
+def smalls(*, threshold=3000, round_=True):
     cardinalities = set()
     counter = -1
     for _, cpd in all():
-     	 if utils.unique_values(cpd) < threshold and cpd.values.shape not in cardinalities:
-             cardinalities.add(cpd.values.shape)
-             counter += 1
+        if utils.unique_values(
+                cpd) < threshold and cpd.values.shape not in cardinalities:
+            cardinalities.add(cpd.values.shape)
+            counter += 1
 
-             if round_:
-                 
-                 cpd.values = np.around(cpd.values, decimals = 2)
-             yield (counter, cpd)
-             
+            if round_:
+
+                cpd.values = np.around(cpd.values, decimals=2)
+            yield (counter, cpd)
+
 
 def small_selector(counter, *, threshold=3000):
     for counter_, cpd in smalls():
-             if counter_ == counter:
-                 return cpd
-    
+        if counter_ == counter:
+            return cpd
+
+
 def example(*, n_variables=6):
     for cpd in all(PATH):
-     	 if utils.unique_values(cpd) < 3000 and len(cpd.values.shape) == n_variables:
-             yield (0, cpd)
-             return
+        if utils.unique_values(cpd) < 3000 and len(
+                cpd.values.shape) == n_variables:
+            yield (0, cpd)
+            return
 
 
 def medical():

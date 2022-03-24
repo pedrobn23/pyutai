@@ -9,7 +9,6 @@ import numpy as np
 
 from pyutai import trees, nodes, selectors
 
-
 # class EntropySelectorTestCase(unittest.TestCase):
 #     """
 #     Test Class for Node classes in values.py.
@@ -26,7 +25,6 @@ from pyutai import trees, nodes, selectors
 #         variables = ['A', 'B', 'C']
 #         var_selector = selectors.entropy(array, variables)
 
-
 # class VarianceSelectorTestCase(unittest.TestCase):
 #     """
 #     Test Class for Node classes in values.py.
@@ -39,8 +37,6 @@ from pyutai import trees, nodes, selectors
 #         array = np.array([[[2, 7], [8, 1]], [[3, 2], [1, -1]]])
 #         variables = ['A', 'B', 'C']
 #         var_selector = selectors.variance(array, variables)
-
-
 
 if __name__ == '__main__':
     unittest.main()
