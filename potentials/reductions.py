@@ -139,7 +139,8 @@ class Reduction:
 
     def min_partitions(self, error : float = 0.05):
         for n_cluster in range(1, self.precomputed_partitions+1):
-            if self.error(n_cluster) < error:
+            
+            if self.error(n_cluster) <= error:
                 return n_cluster
         
 
