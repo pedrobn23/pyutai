@@ -121,14 +121,22 @@ class Cluster:
     def __iter__(self):
         """Returns an iterator over the values of the Tree.
 
-        Returns:
-            element.Element: with the configuration of states variables and the associated value.
+        Yields:
+            element.TupleElement: with the configuration of states variables and the associated value.
         """
         for value, cluster in self.clusters.items():
-            for element in cluster:
-                indexes = dict(zip(self.variables, element))
-                yield element.Element(indexes, value)
+            yield from cluster
 
+    def iter(self, *, dict_elements = False):
+        if dict_elements:
+            for element_ in self:
+                indexes = dict(zip(self.variables, element_))
+                yield element.Element(indexes, element_.value)
+        else:
+            yield from self
+
+        
+                
     def array(self):
         """Return an np.ndarray with the elements of the cluster."""
 

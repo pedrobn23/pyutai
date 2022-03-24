@@ -10,7 +10,6 @@ import numpy as np
 
 from potentials import cluster
 
-
 def _getsizeof(o: object, default_size=8):
     """Avoid taking into account garbage collector overhead """
     try:
@@ -73,3 +72,5 @@ def total_size(o, handlers={}, verbose=False):
         return s
 
     return sizeof(o)
+
+

@@ -136,20 +136,29 @@ class Reduction:
         """Returns the minimum error of partitioning the set of elements in <n_cluster>."""
         return self.errors[len(self.elements)][n_cluster]
 
-    def reduction(self, error: float = 0.05) -> int:
-        """Minimal partitions that creates an aproximation with, at most, 
-        <error> error. Error is calculated with the distance function provided to 
-        Reduction.from_elements(). If no distance was provided, iterative kullback
-        is used."""
 
+    def min_partitions(self, error : float = 0.05):
         for n_cluster in range(1, self.precomputed_partitions+1):
             if self.error(n_cluster) < error:
-                return self.optimal_partition(n_cluster)
+                return n_cluster
+        
 
         raise ValueError(f'No partition has been found for error {error}.' +
                          ' Consider increasing threshold value in' +
                          ' Reduction.from_elements() method.')
 
+
+    def reduction(self, error: float = 0.05) -> List[Tuple[int,int]]:
+        """Minimal partitions that creates an aproximation with, at most, 
+        <error> error. Error is calculated with the distance function provided to 
+        Reduction.from_elements(). If no distance was provided, iterative kullback
+        is used."""
+        try:
+            n_partitions = self.min_partitions(error)
+            return self.optimal_partition(n_partitions)
+        except ValueError as value_error:
+            raise ValueError(f'No partition has been found for error {error}.') from value_error
+        
     def optimal_partition(self, clusters: int):
         if clusters < 0:
             raise ValueError(

@@ -7,30 +7,53 @@ import os
 import statistics
 import sys
 
+from typing import List
+
 import numpy as np
 
-from experiments import utils, networks, read
+
+
+from experiments import networks, read
+from potentials import cluster, element, reductions
+from potentials import utils as size_utils
+
+def ordered_elements(array : np.ndarray) -> List[element.TupleElement]:
+    res = [element.TupleElement(state=state,value=value)
+           for state, value in np.ndenumerate(array)]
+    res.sort(key=lambda x: x.value)
+    return res
 
 if __name__ == '__main__':
-    fault_examples = [
-        4, 11, 13, 23, 27, 32, 33, 54, 59, 61, 66, 70, 72, 74, 77, 78, 79, 80,
-        81, 82, 83, 86, 87, 88, 92, 94, 98, 100, 102, 103, 104, 105, 106, 107,
-        109, 110, 114, 131, 137, 139, 142, 144, 146, 156, 158, 161, 166, 172,
-        190, 193, 194, 197, 210, 212, 217, 226, 227, 228, 232, 233, 236, 238,
-        241, 244
-    ]
-
+    error = 0.1
+    
     for cpd in networks.medical():
-        cluster = utils.cluster_from_cpd(cpd)
+        
+        original_values = cpd.values
+        ordered_elements_ = ordered_elements(original_values)
+        threshold = len(np.unique(original_values))
+        
+        reduction = reductions.Reduction.from_elements(ordered_elements_,
+                                                       threshold=threshold,
+                                                       interactive=False)
 
-        n_clusters = len(cluster.clusters)
-        print(
-            f'Prior to reduction: {n_clusters}, size = {sys.getsizeof(cluster)}'
-        )
+        n_partitions = reduction.min_partitions(0.05)
+        reduced_values = reduction.array(n_partitions, cpd.cardinality)
 
-        cluster = cluster.reduce_cluster(math.isqrt(n_clusters))
+        if n_partitions != len(np.unique(reduced_values)):
+            raise AssertionError('This should no happen')
+        
+        for cls in [cluster.Cluster]:
 
-        n_clusters = len(cluster.clusters)
-        print(
-            f'Successive to reduction:{n_clusters}, size = {sys.getsizeof(cluster)}'
-        )
+            print(f'results for {cls} class')
+
+            original = cls.from_array(original_values, cpd.variables)
+            original_size = size_utils.total_size(original)
+            
+            reduced =  cls.from_array(reduced_values, cpd.variables)
+            reduced_size = size_utils.total_size(reduced)
+            
+            print(f'- Original cluster size: {original_size}')
+            print(f'- Reduced cluster size: {reduced_size}')
+            print(f'- Total reduction: {1 - (reduced_size/original_size):.2f}% ')
+
+            
