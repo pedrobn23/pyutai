@@ -65,3 +65,7 @@ class GeneralIndexPairsTestCase(unittest.TestCase, GeneralTestCase):
         super().__init__(*args, **kwargs)
         self.cls = indexpairs.IndexPairs
         self.maxDiff = 1000
+
+
+if __name__ == '__main__':
+    unittest.main()

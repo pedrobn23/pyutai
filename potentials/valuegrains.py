@@ -25,8 +25,8 @@ class Grain:
     start: Tuple[int]
     end: Tuple[int]
 
-    def __constains__(self, num: int):
-        return start <= num and num <= end
+    def __contains__(self, num: Tuple[int]):
+        return self.start <= num and num <= self.end
 
     @classmethod
     def from_tuple(cls, tup):
@@ -54,18 +54,30 @@ class ValueGrains:
 
     def access(self, indexes: Dict[str, int]) -> float:
         """Retrieve a value from a dictionary mapping."""
+
         if isinstance(indexes, dict):
             indexes = tuple(indexes[var] for var in self.variables)
 
+        division_grain = Grain(indexes, type(self)._max_tuple(indexes))
         for value, grain_list in self.value_grains.items():
             # division_grain is the smallest grain such that:
             # -  is bigger than any grain that could contain indexes
             #    * Note that math.inf is not a valid value in real grains
+            index = bisect.bisect_left(grain_list, division_grain)
+
+            if index > 0:  # if smaller than any grain
+                if indexes in grain_list[index - 1]:
+                    return value
+                
+
+        print(self)
+        print('division grain:', division_grain)
+        for value, grain_list in self.value_grains.items():
             division_grain = Grain(indexes, type(self)._max_tuple(indexes))
             index = bisect.bisect_left(grain_list, division_grain)
-            if index > 0:  # if smaller than any grain
-                if indexes in self._iter(grain_list[index - 1]):
-                    return value
+
+            print('grain list:', grain_list)
+            print('index:', index)
 
         raise ValueError(
             f'Index configuration {zip(self.variables, indexes)} not found.')
