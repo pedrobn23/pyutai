@@ -4,6 +4,7 @@ capabilities on real datasets.
 import dataclasses
 import itertools
 import json
+import os
 import statistics
 import time
 
@@ -118,7 +119,7 @@ VERBOSY = False
 if __name__ == '__main__':
     results = Statistics()
 
-    for cpd in networks.medical():
+    for index, cpd in enumerate(networks.medical()):
         for error in [0.01, 0.05, 0.1, 0.5, 1]:
             original_values = cpd.values
             ordered_elements_ = ordered_elements(original_values)
@@ -171,5 +172,7 @@ if __name__ == '__main__':
                 results.add(_cpd_name(cpd), cls.__name__, error, original_size,
                             reduced_size, time_)
 
-    with open('results.json', 'w') as file:
-        file.write(results.dumps())
+        if index % 100 == 99:
+            filename = f'resultados/results{index-99}-{index}.json'
+            with open(filename, 'w') as file:
+                file.write(results.dumps())
