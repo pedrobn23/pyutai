@@ -35,7 +35,7 @@ def _is_bayesian(path: str) -> bool:
     return ret
 
 
-def read(path: str) -> models.BayesianNetwork:
+def read(path: str) -> models.BayesianModel:
     """
     Read a bayesian network from a file.
     Read method uses pgmpy to read a bayesian network from either
