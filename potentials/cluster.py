@@ -135,7 +135,6 @@ class Cluster:
         else:
             yield from self
 
-        
                 
     def array(self):
         """Return an np.ndarray with the elements of the cluster."""
