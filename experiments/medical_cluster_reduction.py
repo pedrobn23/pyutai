@@ -39,6 +39,7 @@ class Result:
     time: float
     net: str = ''
     var: str = ''
+    modified: bool = True
 
     improvement: float = dataclasses.field(init=False)
 
@@ -107,19 +108,9 @@ class Statistics:
 
         return stats
 
-
-    
-    def add(self, cpd, cls, error, original_size, reduced_size, time):
-        self.results.append(
-            Result(cpd=cpd,
-                   cls=cls,
-                   error=error,
-                   original_size=original_size,
-                   reduced_size=reduced_size,
-                   time=time,
-                   net=net,
-                   var=var))
-
+    def add(self, result):
+        self.results.append(result)
+        
     def clear(self):
         self.results.clear()
 
@@ -166,18 +157,24 @@ if __name__ == '__main__':
             time_ = end - start
 
             n_partitions = reduction.min_partitions(error)
-            reduced_values = reduction.array(n_partitions, cpd.cardinality)
+            if n_partitions < threshold:
+                reduced_values = reduction.array(n_partitions, cpd.cardinality)
+                modified = True
+            else:
+                reduced_values = original_values
+                modified = False
+                
+            if n_partitions != len(np.unique(reduced_values)):
+                raise AssertionError('This should no happen')
 
             if INTERACTIVE:
                 print(f'\n\n*** Results for {_cpd_name(cpd)}. ***\n')
 
-            if INTERACTIVE and VERBOSY:
-                print('*Original values:\n', original_values, '\n')
-                print('*Reduced values:\n', reduced_values, '\n')
-                print('')
+                if VERBOSY:
+                    print('*Original values:\n', original_values, '\n')
+                    print('*Reduced values:\n', reduced_values, '\n')
+                    print('')
 
-            if n_partitions != len(np.unique(reduced_values)):
-                raise AssertionError('This should no happen')
 
             for cls in [
                     cluster.Cluster, valuegrains.ValueGrains,
@@ -202,11 +199,17 @@ if __name__ == '__main__':
                         f'- Total improvement: {1 - (reduced_size/original_size):.2f}% '
                     )
 
-                results.add(_cpd_name(cpd), cls.__name__, error, original_size,
-                            reduced_size, time_, net,cpd.variable)
-
+                results.add(Result(cpd=_cpd_name(cpd),
+                                   cls=cls.__name__,
+                                   error=error,
+                                   original_size=original_size,
+                                   reduced_size=reduced_size,
+                                   time=time_,
+                                   net=net,
+                                   var=cpd.variable,
+                                   modified=modified))
+        
         if index % 100 == 99:
             filename = f'resultados_provisionales/results{index-99}-{index}.json'
             with open(filename, 'w') as file:
                 file.write(results.dumps())
-
