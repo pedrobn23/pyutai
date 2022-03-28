@@ -195,7 +195,7 @@ if __name__ == '__main__':
                     print('')
 
             for cls in [
-                    trees.Tree, _PrunedTree,
+                    #trees.Tree, _PrunedTree,
                     cluster.Cluster, valuegrains.ValueGrains,
                     indexpairs.IndexPairs, indexmap.IndexMap
             ]:
