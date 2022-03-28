@@ -37,6 +37,8 @@ class Result:
     cpd: str
     error: float
     time: float
+    net: str = ''
+    var: str = ''
 
     improvement: float = dataclasses.field(init=False)
 
@@ -45,12 +47,16 @@ class Result:
             self.improvement = 1 - self.reduced_size / self.original_size
         else:
             self.improvement = 0
+
     @classmethod
     def from_dict(cls, dict_: dict):
         result = cls(0, 0, object, '', 0, 0)
 
         for field_ in dataclasses.fields(cls):
-            setattr(result, field_.name, dict_[field_.name])
+            try:
+                setattr(result, field_.name, dict_[field_.name])
+            except KeyError:
+                pass
         result.__post_init__()
 
         return result
@@ -58,10 +64,8 @@ class Result:
     def asdict(self):
         return dataclasses.asdict(self)
 
-    def aslist(self):
-        return [
-            getattr(self, field_.name) for field_ in dataclasses.fields(self)
-        ]
+    def astuple(self):
+        return dataclasses.astuple(self)
 
 
 def _cpd_name(cpd: CPD.TabularCPD) -> str:
@@ -78,7 +82,6 @@ class Statistics:
     def __init__(self):
         self.results: List[Result] = []
 
-
     @classmethod
     def from_json(cls, path):
         stats = cls()
@@ -88,6 +91,23 @@ class Statistics:
             stats.load(data)
 
         return stats
+
+
+    @classmethod
+    def from_files(cls, *paths):
+        stats = cls()
+
+        for path in paths:          
+            if not path.endswith('.json'):
+                raise ValueError(f'.json file expected, got: {path}.')
+
+            with open(path) as file_:
+                data = file_.read()
+                stats.load(data)
+
+        return stats
+
+
     
     def add(self, cpd, cls, error, original_size, reduced_size, time):
         self.results.append(
@@ -96,7 +116,9 @@ class Statistics:
                    error=error,
                    original_size=original_size,
                    reduced_size=reduced_size,
-                   time=time))
+                   time=time,
+                   net=net,
+                   var=var))
 
     def clear(self):
         self.results.clear()
@@ -105,22 +127,33 @@ class Statistics:
         return json.dumps([result.asdict() for result in self.results])
 
     def load(self, str_: str):
-        self.result = [Result.from_dict(dict_) for dict_ in json.loads(str_)]
+        self.results += [Result.from_dict(dict_) for dict_ in json.loads(str_)]
         
     def dataframe(self):
-        data = [result.aslist() for result in self.results]
+        data = [result.astuple() for result in self.results]
         vars_ = [field_.name for field_ in dataclasses.fields(Result)]
-        return pd.dataframe(data, vars_)                
+        return pd.DataFrame(data, columns=vars_)                
+
+    def __add__(self, other):
+        results = self.results + other.results
+
+        ret = Statistics()
+        ret.results = results
+
+        return ret
 
 
+    def __str__(self):
+        return str(self.results)
+                
 INTERACTIVE = True
 VERBOSY = False
 
 if __name__ == '__main__':
     results = Statistics()
 
-    for index, cpd in enumerate(networks.medical()):
-        for error in [0.01, 0.05, 0.1, 0.5, 1]:
+    for index, (cpd, net) in enumerate(networks.medical()):
+        for error in [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]:
             original_values = cpd.values
             ordered_elements_ = ordered_elements(original_values)
             threshold = len(np.unique(original_values))
@@ -170,9 +203,10 @@ if __name__ == '__main__':
                     )
 
                 results.add(_cpd_name(cpd), cls.__name__, error, original_size,
-                            reduced_size, time_)
+                            reduced_size, time_, net,cpd.variable)
 
         if index % 100 == 99:
-            filename = f'resultados/results{index-99}-{index}.json'
+            filename = f'resultados_provisionales/results{index-99}-{index}.json'
             with open(filename, 'w') as file:
                 file.write(results.dumps())
+
