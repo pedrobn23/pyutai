@@ -56,4 +56,3 @@ def medical():
         cpds = model.get_cpds()
         for cpd in cpds:
             yield cpd, net
-

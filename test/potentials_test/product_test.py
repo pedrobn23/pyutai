@@ -17,20 +17,18 @@ class ProductTestCase:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
     def test_product(self):
         card = {'A': 2, 'B': 2, 'C': 2}
 
-        variables1 = ['A','B']
-        variables2 = ['B','C']
-        variables3 = ['A','B','C']
-        
+        variables1 = ['A', 'B']
+        variables2 = ['B', 'C']
+        variables3 = ['A', 'B', 'C']
+
         arr1 = np.array([[1, 2], [2, 3]])
-        arr2 = np.array([[4, 5], [0, 0]])        
+        arr2 = np.array([[4, 5], [0, 0]])
         arr3 = np.array([[[4, 5], [0, 0]], [[8, 10], [0, 0]]])
 
-
-        
         obj1 = self.cls.from_array(arr1, variables1)
         obj2 = self.cls.from_array(arr2, variables2)
 
@@ -38,15 +36,16 @@ class ProductTestCase:
 
         obj4 = self.cls.from_iterable(*operations.combine(obj1, obj2))
 
-        for state in itertools.product(*[range(obj3.cardinalities[var]) for var in obj3.variables]):
+        for state in itertools.product(
+                *[range(obj3.cardinalities[var]) for var in obj3.variables]):
             # using dict to avoid variables missorder
             state = dict(zip(obj3.variables, state))
             x3 = obj3.access(state)
             x4 = obj4.access(state)
-            
-            self.assertEqual(x3,x4)
 
-            
+            self.assertEqual(x3, x4)
+
+
 class ProductClusterTestCase(unittest.TestCase, ProductTestCase):
 
     def __init__(self, *args, **kwargs):
@@ -77,6 +76,7 @@ class ProductIndexPairsTestCase(unittest.TestCase, ProductTestCase):
         super().__init__(*args, **kwargs)
         self.cls = indexpairs.IndexPairs
         self.maxDiff = 1000
-        
+
+
 if __name__ == '__main__':
     unittest.main()

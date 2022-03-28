@@ -41,10 +41,9 @@ class Result:
     var: str = ''
     modified: bool = True
     cardinality: int = 0
-    
+
     improvement: float = dataclasses.field(init=False)
 
-    
     def __post_init__(self):
         if self.original_size != 0:
             self.improvement = 1 - self.reduced_size / self.original_size
@@ -79,8 +78,10 @@ def _cpd_name(cpd: CPD.TabularCPD) -> str:
 
     return f'CPD in {variable} conditional on {conditionals}'
 
+
 def _total_cardinality(cpd: CPD.TabularCPD) -> int:
     return np.prod(cpd.cardinality)
+
 
 class Statistics:
 
@@ -97,12 +98,11 @@ class Statistics:
 
         return stats
 
-
     @classmethod
     def from_files(cls, *paths):
         stats = cls()
 
-        for path in paths:          
+        for path in paths:
             if not path.endswith('.json'):
                 raise ValueError(f'.json file expected, got: {path}.')
 
@@ -114,7 +114,7 @@ class Statistics:
 
     def add(self, result):
         self.results.append(result)
-        
+
     def clear(self):
         self.results.clear()
 
@@ -123,11 +123,11 @@ class Statistics:
 
     def load(self, str_: str):
         self.results += [Result.from_dict(dict_) for dict_ in json.loads(str_)]
-        
+
     def dataframe(self):
         data = [result.astuple() for result in self.results]
         vars_ = [field_.name for field_ in dataclasses.fields(Result)]
-        return pd.DataFrame(data, columns=vars_)                
+        return pd.DataFrame(data, columns=vars_)
 
     def __add__(self, other):
         results = self.results + other.results
@@ -137,10 +137,10 @@ class Statistics:
 
         return ret
 
-
     def __str__(self):
         return str(self.results)
-                
+
+
 INTERACTIVE = True
 VERBOSY = False
 
@@ -148,7 +148,9 @@ if __name__ == '__main__':
     results = Statistics()
 
     for index, (cpd, net) in enumerate(networks.medical()):
-        for error in [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]:
+        for error in [
+                0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1
+        ]:
             original_values = cpd.values
             ordered_elements_ = ordered_elements(original_values)
             threshold = len(np.unique(original_values))
@@ -167,7 +169,7 @@ if __name__ == '__main__':
             else:
                 reduced_values = original_values
                 modified = False
-                
+
             if n_partitions != len(np.unique(reduced_values)):
                 raise AssertionError('This should no happen')
 
@@ -178,7 +180,6 @@ if __name__ == '__main__':
                     print('*Original values:\n', original_values, '\n')
                     print('*Reduced values:\n', reduced_values, '\n')
                     print('')
-
 
             for cls in [
                     cluster.Cluster, valuegrains.ValueGrains,
@@ -203,17 +204,18 @@ if __name__ == '__main__':
                         f'- Total improvement: {1 - (reduced_size/original_size):.2f}% '
                     )
 
-                results.add(Result(cpd=_cpd_name(cpd),
-                                   cls=cls.__name__,
-                                   error=error,
-                                   original_size=original_size,
-                                   reduced_size=reduced_size,
-                                   time=time_,
-                                   net=net,
-                                   var=cpd.variable,
-                                   modified=modified,
-                                   cardinality=total_cardinality))
-        
+                results.add(
+                    Result(cpd=_cpd_name(cpd),
+                           cls=cls.__name__,
+                           error=error,
+                           original_size=original_size,
+                           reduced_size=reduced_size,
+                           time=time_,
+                           net=net,
+                           var=cpd.variable,
+                           modified=modified,
+                           cardinality=total_cardinality))
+
         if index % 100 == 99:
             filename = f'resultados_provisionales/results{index-99}-{index}.json'
             with open(filename, 'w') as file:
