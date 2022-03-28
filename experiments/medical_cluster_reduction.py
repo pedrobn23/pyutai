@@ -16,6 +16,7 @@ from pgmpy.factors.discrete import CPD
 
 from potentials import cluster, element, indexpairs, indexmap, reductions, valuegrains
 from potentials import utils as size_utils
+from pyutai import trees
 
 from experiments import networks
 
@@ -144,6 +145,18 @@ class Statistics:
 INTERACTIVE = True
 VERBOSY = False
 
+class _PrunedTree:
+    """Auxiliar class to implement a pruned tree creator that confort standard API."""
+    def __init__(self):
+        pass
+    
+    @classmethod
+    def from_array(cls, original_values, variables):
+        tree = trees.Tree.from_array(original_values, variables)
+        tree.prune()
+
+        return tree
+        
 if __name__ == '__main__':
     results = Statistics()
 
@@ -182,6 +195,7 @@ if __name__ == '__main__':
                     print('')
 
             for cls in [
+                    trees.Tree, _PrunedTree,
                     cluster.Cluster, valuegrains.ValueGrains,
                     indexpairs.IndexPairs, indexmap.IndexMap
             ]:
@@ -214,7 +228,8 @@ if __name__ == '__main__':
                            net=net,
                            var=cpd.variable,
                            modified=modified,
-                           cardinality=total_cardinality))
+                           cardinality=_total_cardinality(cpd),
+                    ))
 
         if index % 100 == 99:
             filename = f'resultados_provisionales/results{index-99}-{index}.json'

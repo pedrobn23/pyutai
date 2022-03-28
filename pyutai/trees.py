@@ -203,6 +203,9 @@ class Tree:
                 f'provided.\nArray shape: {data}, ' +
                 f'variables: {variables}.')
 
+        if cardinalities is None:
+            cardinalities = dict(zip(variables, data.shape))
+            
         for index, var in enumerate(variables):
             if data.shape[index] != cardinalities[var]:
                 raise ValueError(
@@ -210,9 +213,7 @@ class Tree:
                     f'{var}: received cardinality {cardinalities[var]},' +
                     f'in array {data.shape[index]}.')
 
-        if cardinalities is None:
-            cardinalities = dict(zip(variables, data.shape))
-            
+
         # adapter from IndexSelection to numpy Index-Tuple
         data_accessor = lambda x: data.item(tuple(x[var] for var in variables))
 
