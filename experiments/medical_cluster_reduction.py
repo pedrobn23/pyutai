@@ -4,6 +4,7 @@ capabilities on real datasets.
 import dataclasses
 import itertools
 import json
+import os
 import statistics
 import time
 
@@ -36,20 +37,29 @@ class Result:
     cpd: str
     error: float
     time: float
-
+    net: str = ''
+    var: str = ''
+    modified: bool = True
+    cardinality: int = 0
+    
     improvement: float = dataclasses.field(init=False)
 
+    
     def __post_init__(self):
         if self.original_size != 0:
             self.improvement = 1 - self.reduced_size / self.original_size
         else:
             self.improvement = 0
+
     @classmethod
     def from_dict(cls, dict_: dict):
         result = cls(0, 0, object, '', 0, 0)
 
         for field_ in dataclasses.fields(cls):
-            setattr(result, field_.name, dict_[field_.name])
+            try:
+                setattr(result, field_.name, dict_[field_.name])
+            except KeyError:
+                pass
         result.__post_init__()
 
         return result
@@ -57,10 +67,8 @@ class Result:
     def asdict(self):
         return dataclasses.asdict(self)
 
-    def aslist(self):
-        return [
-            getattr(self, field_.name) for field_ in dataclasses.fields(self)
-        ]
+    def astuple(self):
+        return dataclasses.astuple(self)
 
 
 def _cpd_name(cpd: CPD.TabularCPD) -> str:
@@ -71,12 +79,13 @@ def _cpd_name(cpd: CPD.TabularCPD) -> str:
 
     return f'CPD in {variable} conditional on {conditionals}'
 
+def _total_cardinality(cpd: CPD.TabularCPD) -> int:
+    return np.prod(cpd.cardinality)
 
 class Statistics:
 
     def __init__(self):
         self.results: List[Result] = []
-
 
     @classmethod
     def from_json(cls, path):
@@ -87,16 +96,25 @@ class Statistics:
             stats.load(data)
 
         return stats
-    
-    def add(self, cpd, cls, error, original_size, reduced_size, time):
-        self.results.append(
-            Result(cpd=cpd,
-                   cls=cls,
-                   error=error,
-                   original_size=original_size,
-                   reduced_size=reduced_size,
-                   time=time))
 
+
+    @classmethod
+    def from_files(cls, *paths):
+        stats = cls()
+
+        for path in paths:          
+            if not path.endswith('.json'):
+                raise ValueError(f'.json file expected, got: {path}.')
+
+            with open(path) as file_:
+                data = file_.read()
+                stats.load(data)
+
+        return stats
+
+    def add(self, result):
+        self.results.append(result)
+        
     def clear(self):
         self.results.clear()
 
@@ -104,22 +122,33 @@ class Statistics:
         return json.dumps([result.asdict() for result in self.results])
 
     def load(self, str_: str):
-        self.result = [Result.from_dict(dict_) for dict_ in json.loads(str_)]
+        self.results += [Result.from_dict(dict_) for dict_ in json.loads(str_)]
         
     def dataframe(self):
-        data = [result.aslist() for result in self.results]
+        data = [result.astuple() for result in self.results]
         vars_ = [field_.name for field_ in dataclasses.fields(Result)]
-        return pd.dataframe(data, vars_)                
+        return pd.DataFrame(data, columns=vars_)                
+
+    def __add__(self, other):
+        results = self.results + other.results
+
+        ret = Statistics()
+        ret.results = results
+
+        return ret
 
 
+    def __str__(self):
+        return str(self.results)
+                
 INTERACTIVE = True
 VERBOSY = False
 
 if __name__ == '__main__':
     results = Statistics()
 
-    for cpd in networks.medical():
-        for error in [0.01, 0.05, 0.1, 0.5, 1]:
+    for index, (cpd, net) in enumerate(networks.medical()):
+        for error in [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]:
             original_values = cpd.values
             ordered_elements_ = ordered_elements(original_values)
             threshold = len(np.unique(original_values))
@@ -132,18 +161,24 @@ if __name__ == '__main__':
             time_ = end - start
 
             n_partitions = reduction.min_partitions(error)
-            reduced_values = reduction.array(n_partitions, cpd.cardinality)
+            if n_partitions < threshold:
+                reduced_values = reduction.array(n_partitions, cpd.cardinality)
+                modified = True
+            else:
+                reduced_values = original_values
+                modified = False
+                
+            if n_partitions != len(np.unique(reduced_values)):
+                raise AssertionError('This should no happen')
 
             if INTERACTIVE:
                 print(f'\n\n*** Results for {_cpd_name(cpd)}. ***\n')
 
-            if INTERACTIVE and VERBOSY:
-                print('*Original values:\n', original_values, '\n')
-                print('*Reduced values:\n', reduced_values, '\n')
-                print('')
+                if VERBOSY:
+                    print('*Original values:\n', original_values, '\n')
+                    print('*Reduced values:\n', reduced_values, '\n')
+                    print('')
 
-            if n_partitions != len(np.unique(reduced_values)):
-                raise AssertionError('This should no happen')
 
             for cls in [
                     cluster.Cluster, valuegrains.ValueGrains,
@@ -168,8 +203,18 @@ if __name__ == '__main__':
                         f'- Total improvement: {1 - (reduced_size/original_size):.2f}% '
                     )
 
-                results.add(_cpd_name(cpd), cls.__name__, error, original_size,
-                            reduced_size, time_)
-
-    with open('results.json', 'w') as file:
-        file.write(results.dumps())
+                results.add(Result(cpd=_cpd_name(cpd),
+                                   cls=cls.__name__,
+                                   error=error,
+                                   original_size=original_size,
+                                   reduced_size=reduced_size,
+                                   time=time_,
+                                   net=net,
+                                   var=cpd.variable,
+                                   modified=modified,
+                                   cardinality=total_cardinality))
+        
+        if index % 100 == 99:
+            filename = f'resultados_provisionales/results{index-99}-{index}.json'
+            with open(filename, 'w') as file:
+                file.write(results.dumps())
