@@ -40,9 +40,11 @@ class Result:
     net: str = ''
     var: str = ''
     modified: bool = True
-
+    cardinality: int = 0
+    
     improvement: float = dataclasses.field(init=False)
 
+    
     def __post_init__(self):
         if self.original_size != 0:
             self.improvement = 1 - self.reduced_size / self.original_size
@@ -77,6 +79,8 @@ def _cpd_name(cpd: CPD.TabularCPD) -> str:
 
     return f'CPD in {variable} conditional on {conditionals}'
 
+def _total_cardinality(cpd: CPD.TabularCPD) -> int:
+    return np.prod(cpd.cardinality)
 
 class Statistics:
 
@@ -207,7 +211,8 @@ if __name__ == '__main__':
                                    time=time_,
                                    net=net,
                                    var=cpd.variable,
-                                   modified=modified))
+                                   modified=modified,
+                                   cardinality=total_cardinality))
         
         if index % 100 == 99:
             filename = f'resultados_provisionales/results{index-99}-{index}.json'
