@@ -26,7 +26,7 @@ def _is_bayesian(path: str) -> bool:
             net_type = net_file.readline().strip()
             ret = net_type == b'BAYES'
             net_file.close()
-        
+
     except OSError as ose:
         raise OSError(f'Error ocurred reading network file {path!r}') from ose
 
