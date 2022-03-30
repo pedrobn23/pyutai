@@ -19,6 +19,7 @@ class ProductTestCase:
         super().__init__(*args, **kwargs)
 
     def test_product(self):
+
         card = {'A': 2, 'B': 2, 'C': 2}
 
         variables1 = ['A', 'B']
@@ -40,6 +41,7 @@ class ProductTestCase:
                 *[range(obj3.cardinalities[var]) for var in obj3.variables]):
             # using dict to avoid variables missorder
             state = dict(zip(obj3.variables, state))
+
             x3 = obj3.access(state)
             x4 = obj4.access(state)
 

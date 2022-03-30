@@ -144,10 +144,6 @@ class Statistics:
     def __str__(self):
         return str(self.results)
 
-
-INTERACTIVE = True
-VERBOSY = False
-
 class _PrunedTree:
     """Auxiliar class to implement a pruned tree creator that confort standard API."""
     def __init__(self):
@@ -258,54 +254,14 @@ def _size_experiment(errors):
 
     return results
 
-OBJECTIVE_NETS = {'hepar2.bif': ['ggtp', 'ast', 'alt', 'bilirubin'],
-                  'diabetes.bif': ['cho_0'],
-                  'munin.bif': ['L_MED_ALLCV_EW'],
-                  'pathfinder.bif': ['F40']}
+INTERACTIVE = True
+VERBOSY = False
 
-def _entropy(orig :np.ndarray, reduc : np.ndarray) -> float:
-    return scipy.stats.entropy(orig.flatten(), reduc.flatten())
-
-def _prosterior_kullback_diference(net, variable, error):
-    for net_name, goal_variables in OBJECTIVE_NETS.items():
-        bayesian_net = networks.get(net_name)
-
-        for variable in goal_variables:
-            cpd = bayesian_net.get_cpds(variable)
-            original_values, reduced_values, time_, modified = _aproximate_cpd(cpd, error)
-
-            if modified:
-                modified_cpd = cpd.copy()
-                modified_cpd.values = reduced_values
-
-                modified_net = bayesian_net.copy()
-                modified_net.add_cpds(modified_cpd)
-            else:
-                raise ValueError('This should not happen')
-            
-
-            # is left to compute posterior for both of them.
-            prior_entropy = _entropy(original_values, reduced_values) 
-
-            original_posterior_values = inference.VariableElimination(net).query([variable]).values
-            reduced_posterior_values = inference.VariableElimination(modified_net).query([variable]).values
-
-            posterior_entropy = _entropy(original_posterior_values, reduced_posterior_values)
-            if INTERACTIVE:
-                print(f'\n\n*** Results for {_cpd_name(cpd)} in net {net_name}. ***\n')
-                print(f'   - prior error: {prior_entropy}')
-                print(f'   - posterior error: {posterior_entropy}')
-            
-            
 if __name__ == '__main__':
     errors =  [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
 
-    # for error in errors:
-    #     for net, variables in OBJECTIVE_NETS.items():
-    #         for variable in variables:
-    #             _prosterior_kullback_diference(net, variable, error)
-
     size_results = _size_experiment(errors)
+
     filename = f'resultados_provisionales/size_results.json'
     with open(filename, 'w') as file:
         file.write(results.dumps())

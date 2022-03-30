@@ -106,14 +106,14 @@ def _kullback_step():
 
         elif median == 0 and new_median != 0:
             # This case can happen only if element.value != 0
-            error = element.value * math.log(element.value / new_median)
+            error = element.value * np.log(element.value / new_median)
 
         elif median != 0 and element.value == 0:
-            error += total_weight * math.log(median / new_median)
+            error += total_weight * np.log(median / new_median)
 
         else:
-            error += total_weight * math.log(
-                median / new_median) + element.value * math.log(
+            error += total_weight * np.log(
+                median / new_median) + element.value * np.log(
                     element.value / new_median)
 
         total_weight = new_total_weight
