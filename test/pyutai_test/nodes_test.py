@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 
 from pyutai import trees, nodes
-
+from potentials import utils
 
 class NodesTestCase(unittest.TestCase):
     """
@@ -51,6 +51,12 @@ class NodesTestCase(unittest.TestCase):
             self.assertNotEqual(nodeA, nodeB)
 
 
+    def test_sizeof(self):
+        print('\n\n\n')
+        print(utils.total_size(self.branch_nodes[1]))
+        print('\n\n\n')
+
+        
 class TableNodeTestCase(unittest.TestCase):
     """
     Test Class for TableNode classes in nodes.py.
@@ -82,6 +88,7 @@ class TableNodeTestCase(unittest.TestCase):
         nodec = nodes.TableNode(values=tablec, variables=['A', 'B', 'C'])
 
         self.assertEqual(nodea * nodeb, nodec)
+
 
 
 if __name__ == '__main__':

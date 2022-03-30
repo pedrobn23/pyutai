@@ -25,15 +25,6 @@ from experiments import networks, statistics
 from experiments.medical import aproximation
 
 
-def ordered_elements(array: np.ndarray) -> List[element.TupleElement]:
-    res = [
-        element.TupleElement(state=state, value=value)
-        for state, value in np.ndenumerate(array)
-    ]
-    res.sort(key=lambda x: x.value)
-    return res
-
-
 @dataclasses.dataclass
 class Result:
     original_size: int
@@ -141,7 +132,7 @@ def size_experiment(errors):
                 )
 
             original_values, reduced_values, time_, modified = aproximation.aproximate_cpd(
-                cpd, error)
+                cpd, error, interactive=INTERACTIVE, verbosy = VERBOSY)
 
             for cls in [
                     trees.Tree, _PrunedTree, cluster.Cluster,
@@ -176,6 +167,6 @@ RESULT_FILE = 'resultados_provisionales/size_results.json'
 if __name__ == '__main__':
     errors = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
 
-    size_results = _size_experiment(errors)
+    size_results = size_experiment(errors)
     with open(RESULT_FILE, 'w') as file:
         file.write(results.dumps())

@@ -21,7 +21,21 @@ from pyutai import trees
 from experiments import networks
 
 
-def aproximate_cpd(cpd: CPD.TabularCPD, error):
+def ordered_elements(array: np.ndarray) -> List[element.TupleElement]:
+    res = [
+        element.TupleElement(state=state, value=value)
+        for state, value in np.ndenumerate(array)
+    ]
+    res.sort(key=lambda x: x.value)
+    return res
+
+def _kullback(mata, matb):
+    """Helper to check Kullback-Leibler distance."""
+    mata = mata.flatten()
+    matb = matb.flatten()
+    return sum(a * (np.log(a) - np.log(b)) for a, b in zip(mata, matb))
+
+def aproximate_cpd(cpd: CPD.TabularCPD, error, *, interactive = True, verbosy = False):
     """"""
     original_values = cpd.values
     ordered_elements_ = ordered_elements(original_values)
@@ -45,15 +59,11 @@ def aproximate_cpd(cpd: CPD.TabularCPD, error):
     if n_partitions != len(np.unique(reduced_values)):
         raise AssertionError('This should not happen')
 
-    if (error_ := _entropy(original_values, reduced_values)) > error:
-        raise AssertionError(
-            f'Obtained error {error_}, expected under threshold {error}')
-
-    if INTERACTIVE:
+    if interactive:
         print(f'- original number of partitions: {threshold}')
         print(f'- reduced number of partitions: {n_partitions}')
         print(f'- goal error: {error}')
-        if VERBOSY:
+        if verbosy:
             print(' - Original values:\n', original_values, '\n')
             print(' - Reduced values:\n', reduced_values, '\n')
 
