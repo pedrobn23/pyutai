@@ -22,6 +22,40 @@ from experiments import networks
 from experiments.medical import aproximation
 
 
+
+@dataclasses.dataclass
+class Result:
+    variable : str
+    net : str
+    error : float
+    posterior_error : float
+    
+    def __post_init__(self):
+        if self.original_size != 0:
+            self.improvement = 1 - self.reduced_size / self.original_size
+        else:
+            self.improvement = 0
+
+    @classmethod
+    def from_dict(cls, dict_: dict):
+        result = cls('', '', 0)
+
+        for field_ in dataclasses.fields(cls):
+            try:
+                setattr(result, field_.name, dict_[field_.name])
+            except KeyError:
+                pass
+        result.__post_init__()
+
+        return result
+
+    def asdict(self):
+        return dataclasses.asdict(self)
+
+    def astuple(self):
+        return dataclasses.astuple(self)
+
+
 def _kullback(mata, matb):
     """Helper to check Kullback-Leibler distance."""
     mata = mata.flatten()
@@ -69,7 +103,7 @@ def full_aproximation(original_net, error):
     return modified_net
 
 
-def _prosterior_kullback_diference(original_net, modified_net):
+def prosterior_kullback_diference(original_net, modified_net):
     original_posterior_values = inference.VariableElimination(
         original_net).query([variable]).values
     reduced_posterior_values = inference.VariableElimination(
@@ -78,19 +112,39 @@ def _prosterior_kullback_diference(original_net, modified_net):
     posterior_entropy = _entropy(original_posterior_values,
                                  reduced_posterior_values)
 
+    return posterior_entropy
+
 
 def _posterior_kullback_diference_experiment(objectives, error):
+    results = statistics.Statistics()
+    
     for error in errors:
         for net_name, goal_variables in objectives.items():
-            bayesian_net = networks.get(net_name)
+            original_net = networks.get(net_name)
             for variable in goal_variables:
-                modified_net = single_cpd
+                modified_net = variable_aproximation(original_net, variable, error)
+                posterior_error = prosterior_kullback_diference(original_net,
+                                                                modified_net)
 
-    if INTERACTIVE:
-        print(f'\n\n*** Results for {_cpd_name(cpd)} in net {net_name}. ***\n')
-        print(f'   - prior error: {prior_entropy}')
-        print(f'   - posterior error: {posterior_entropy}')
+                results.add(Result(
+                    net=net_name,
+                    error=error,
+                    variable=variable,
+                    posterior_error=posterior_error,
+                ))
 
+            modified_net = full_aproximation(original_net, error)
+            posterior_error = prosterior_kullback_diference(original_net,
+                                                                modified_net)
+
+            results.add(Result(
+                net=net_name,
+                error=error,
+                variable="all",
+                posterior_error=posterior_error,
+            ))
+                
+    return results
 
 INTERACTIVE = True
 VERBOSY = False
@@ -102,7 +156,11 @@ OBJECTIVE_NETS = {
     'pathfinder.bif': ['F40']
 }
 
+RESULT_FILE = 'resultados_provisionales/results.json'
+
 if __name__ == '__main__':
     errors = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
-
-    _prosterior_kullback_diference(OBJECTIVE_NETS, errors)
+    
+    results = _prosterior_kullback_diference(OBJECTIVE_NETS, errors)
+    with open(RESULT_FILE, 'w') as file:
+        file.write(results.dumps())
