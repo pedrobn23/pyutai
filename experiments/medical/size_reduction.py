@@ -163,10 +163,16 @@ def size_experiment(errors):
 INTERACTIVE = True
 VERBOSY = False
 RESULT_FILE = 'resultados_provisionales/size_results.json'
-
+ERRORS = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
+    
 if __name__ == '__main__':
-    errors = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
 
-    size_results = size_experiment(errors)
+    final_results = statistics.Statistics()
+    with multiprocessing.Pool(processes=len(ERRORS)) as pool:
+        for results in pool.imap_unordered(size_experiment, ERRORS):
+            final_results += results
+
     with open(RESULT_FILE, 'w') as file:
-        file.write(results.dumps())
+        file.write(final_results.dumps())
+
+        

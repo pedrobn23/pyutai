@@ -75,6 +75,6 @@ class Statistics:
         ret.results = results
 
         return ret
-
+    
     def __str__(self):
         return str(self.results)

@@ -1,6 +1,7 @@
 import dataclasses
 import itertools
 import json
+import joblib
 import multiprocessing
 import os
 import time
@@ -97,15 +98,18 @@ def full_aproximation(original_net, error):
 
 
 def prosterior_kullback_diference(original_net, modified_net, variable):
-    original_posterior_values = inference.VariableElimination(
-        original_net).query([variable]).values
-    reduced_posterior_values = inference.VariableElimination(
-        modified_net).query([variable]).values
+    try:
+        original_posterior_values = inference.VariableElimination(
+            original_net).query([variable]).values
+        reduced_posterior_values = inference.VariableElimination(
+            modified_net).query([variable]).values
 
-    posterior_entropy = _entropy(original_posterior_values,
-                                 reduced_posterior_values)
+        posterior_entropy = _entropy(original_posterior_values,
+                                     reduced_posterior_values)
+        return posterior_entropy
+    except ValueError:
+        return -1
 
-    return posterior_entropy
 
 
 def diference_experiment(objectives, error):
@@ -135,32 +139,38 @@ def diference_experiment(objectives, error):
     return results
 
 
-def parallel_diference_experiment(objectives, errors):
+def parallel_diference_experiment(error):
+    """Auxiliar pickable function for parallel computing.
+
+    [1] https://docs.python.org/3/library/pickle.html#what-can-be-pickled-and-unpickled
+    [2] https://stackoverflow.com/questions/8804830/python-multiprocessing-picklingerror-cant-pickle-type-function
+    """
+    return diference_experiment(OBJECTIVE_NETS, error)
     
-    with multiprocessing.Pool(processes=len(errors)) as pool:
-        results = pool.map(lambda x: diference_experiment(objectives, c), errors)
-        print(results)
 
 
+# Configuration constants   
 
 INTERACTIVE = True
 VERBOSY = False
 
-
 RESULT_FILE = 'resultados_provisionales/kullback_results.json'
 
+OBJECTIVE_NETS = {
+    'hepar2.bif': ['ggtp', 'ast', 'alt', 'bilirubin'],
+    'diabetes.bif': ['cho_0'],
+    'munin.bif': ['L_MED_ALLCV_EW'],
+    'pathfinder.bif': ['F40']
+}
+EXAMPLE_NETS = {'hepar2.bif': ['ggtp'],}
+ERRORS = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
+
 if __name__ == '__main__':
-    errors = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
-
-    objective_nets = {
-        'hepar2.bif': ['ggtp', 'ast', 'alt', 'bilirubin'],
-        'diabetes.bif': ['cho_0'],
-        'munin.bif': ['L_MED_ALLCV_EW'],
-        'pathfinder.bif': ['F40']
-    }
-
-    examples_objective_nets = {'hepar2.bif': ['ggtp'],}
+    final_results = statistics.Statistics()
     
-    results = parallel_diference_experiment(examples_objective_nets, errors)
+    with multiprocessing.Pool(processes=len(ERRORS)) as pool:
+        for results in pool.imap_unordered(parallel_diference_experiment, ERRORS):
+            final_results += results
+
     with open(RESULT_FILE, 'w') as file:
-        file.write(results.dumps())
+        file.write(final_results.dumps())
