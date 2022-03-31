@@ -1,6 +1,7 @@
 import dataclasses
 import itertools
 import json
+import multiprocessing
 import os
 import time
 
@@ -136,7 +137,7 @@ def diference_experiment(objectives, error):
 
 def parallel_diference_experiment(objectives, errors):
     
-    with Pool(processes=len(errors)) as pool:
+    with multiprocessing.Pool(processes=len(errors)) as pool:
         results = pool.map(lambda x: diference_experiment(objectives, c), errors)
         print(results)
 
