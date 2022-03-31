@@ -107,40 +107,40 @@ def prosterior_kullback_diference(original_net, modified_net, variable):
     return posterior_entropy
 
 
-def posterior_diference_experiment(objectives, error):
+def diference_experiment(objectives, error):
     results = statistics.Statistics()
     
-    for error in errors:
-        for net_name, goal_variables in objectives.items():
-            original_net = networks.get(net_name)
-            full_modified_net = full_aproximation(original_net, error)
-            for variable in goal_variables:
-                partial_modified_net = variable_aproximation(original_net, variable, error)
-
-                total_reduction_error = prosterior_kullback_diference(original_net,
+    for net_name, goal_variables in objectives.items():
+        original_net = networks.get(net_name)
+        full_modified_net = full_aproximation(original_net, error)
+        for variable in goal_variables:
+            partial_modified_net = variable_aproximation(original_net, variable, error)
+            
+            total_reduction_error = prosterior_kullback_diference(original_net,
                                                                       full_modified_net,
                                                                       variable)
-                partial_reduction_error = prosterior_kullback_diference(original_net,
+            partial_reduction_error = prosterior_kullback_diference(original_net,
                                                                         partial_modified_net,
                                                                         variable)
 
-                results.add(Result(
-                    net=net_name,
-                    error=error,
-                    variable=variable,
-                    total_reduction_error=total_reduction_error,
-                    partial_reduction_error=partial_reduction_error,
-                ))
-                print(Result(
-                    net=net_name,
-                    error=error,
-                    variable=variable,
-                    total_reduction_error=total_reduction_error,
-                    partial_reduction_error=partial_reduction_error,
-                ))
+            results.add(Result(
+                net=net_name,
+                error=error,
+                variable=variable,
+                total_reduction_error=total_reduction_error,
+                partial_reduction_error=partial_reduction_error,
+            ))
 
-                
     return results
+
+
+def parallel_diference_experiment(objectives, errors):
+    
+    with Pool(processes=len(errors)) as pool:
+        results = pool.map(lambda x: diference_experiment(objectives, c), errors)
+        print(results)
+
+
 
 INTERACTIVE = True
 VERBOSY = False
@@ -157,7 +157,9 @@ if __name__ == '__main__':
         'munin.bif': ['L_MED_ALLCV_EW'],
         'pathfinder.bif': ['F40']
     }
+
+    examples_objective_nets = {'hepar2.bif': ['ggtp'],}
     
-    results = posterior_diference_experiment(objective_nets, errors)
+    results = parallel_diference_experiment(examples_objective_nets, errors)
     with open(RESULT_FILE, 'w') as file:
         file.write(results.dumps())
