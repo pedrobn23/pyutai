@@ -154,7 +154,7 @@ def parallel_diference_experiment(error):
 INTERACTIVE = True
 VERBOSY = False
 
-RESULT_FILE = 'resultados_provisionales/kullback_results.json'
+
 
 OBJECTIVE_NETS = {
     'hepar2.bif': ['ggtp', 'ast', 'alt', 'bilirubin'],
@@ -169,8 +169,9 @@ if __name__ == '__main__':
     final_results = statistics.Statistics()
     
     with multiprocessing.Pool(processes=len(ERRORS)) as pool:
+        index = -1
         for results in pool.imap_unordered(parallel_diference_experiment, ERRORS):
-            final_results += results
-
-    with open(RESULT_FILE, 'w') as file:
-        file.write(final_results.dumps())
+            index += 1
+            result_file = f'resultados_provisionales/kullback_results_{index}.json'
+            with open(result_file, 'w') as file:
+                file.write(results.dumps())
