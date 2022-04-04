@@ -135,6 +135,8 @@ def diference_experiment(objectives, error):
                 total_reduction_error=total_reduction_error,
                 partial_reduction_error=partial_reduction_error,
             ))
+            
+        write_results(variable, error, net_name, results)
 
     return results
 
@@ -146,7 +148,13 @@ def parallel_diference_experiment(error):
     [2] https://stackoverflow.com/questions/8804830/python-multiprocessing-picklingerror-cant-pickle-type-function
     """
     return diference_experiment(OBJECTIVE_NETS, error)
-    
+
+def write_results(variable, error, net, results):
+    result_file = f'resultados_provisionales/kullback_{net}_{variable}_{error}.json'
+    with open(result_file, 'w') as file:
+        file.write(results.dumps())
+
+    results.clear()
 
 
 # Configuration constants   
@@ -166,12 +174,6 @@ EXAMPLE_NETS = {'hepar2.bif': ['ggtp'],}
 ERRORS = [0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
 
 if __name__ == '__main__':
-    final_results = statistics.Statistics()
     
-    with multiprocessing.Pool(processes=len(ERRORS)) as pool:
-        index = -1
-        for results in pool.imap_unordered(parallel_diference_experiment, ERRORS):
-            index += 1
-            result_file = f'resultados_provisionales/kullback_results_{index}.json'
-            with open(result_file, 'w') as file:
-                file.write(results.dumps())
+    joblib.Parallel(n_jobs=len(ERRORS))(joblib.delayed(parallel_diference_experiment)(error)
+                                        for error in ERRORS)
