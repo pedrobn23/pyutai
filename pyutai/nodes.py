@@ -21,7 +21,6 @@ from typing import Dict, List
 
 import numpy as np
 
-
 class Node(abc.ABC):
     """Abstract Base Class for potential Value-Tree nodes"""
 
@@ -132,7 +131,9 @@ class BranchNode(Node):
         """size is the number of nodes that lives under the root."""
         return sum(child.size() for child in self.children) + 1
 
-
+    def __sizeof__(self):
+        return object().__sizeof__() + self.name.__sizeof__() + self.children.__sizeof__() + sum(child.__sizeof__() for child in self.children)
+    
 class LeafNode(Node):
     """LeafNode is a node that store a value.
 
@@ -225,6 +226,8 @@ class LeafNode(Node):
             self.value *= other.value
         return self
 
+    def __sizeof__(self):
+        return object().__sizeof__() + self.value.__sizeof__()
 
 class TableNode(Node):
     """LeafNode is a node that store a value table.
@@ -406,53 +409,5 @@ class TableNode(Node):
         else:
             return self._sum(other, inplace=True)
 
-
-class MarkedNode(BranchNode):
-    """A MarkedNode is a BranchNode with a special mark stored.
-
-    A MarkedNode differs from a BranchNode in the fact that it stored an
-    id related with its contents. Then, whenever comparing it with another
-    marked node, it will ensure before computing the equality that the ids
-    are the same, thus greatly reducing the numbers of comparisons done.
-
-    It creates heavier node than a normal BranchNode, so if no comparisons
-    are to be made, it might not be a good fit.
-    """
-
-    @classmethod
-    def _mark(cls, node: Node):
-        """Aux method to use in recursion to deduce mark value."""
-        if node.is_terminal():
-            return np.uintc(node.value)
-        if node is cls:
-            return node.mark
-        return 0
-
-    def __init__(self, name: str, children: List[Node], *, mark: int = None):
-        """Initializes MarkedNode
-
-        checks that the variable is a non-negative value and assign
-
-        Args:
-            name: Name of the variable associated with the node. It should be non-negative.
-            children: Each of the nodes associated with each state of variable name.
-                It should be non-negative.
-        """
-
-        super().__init__(name, children)
-        if not mark:
-            self.mark = sum(3**i * MarkedNode._mark(child)
-                            for i, child in enumerate(children))
-
-    def __eq__(self, other: Node):
-        if other is type(self):
-            if not self.mark == other.mark:
-                return False
-
-        return super().__eq__(other)
-
-    # TODO: include memo
-    def __deepcopy__(self, memo):
-        return type(self)(self.name,
-                          copy.deepcopy(self.children),
-                          mark=self.mark)
+    def __sizeof__(self):
+        result =  object().__sizeof__() + self.values.__sizeof__() + utils.total_size(self.variables)

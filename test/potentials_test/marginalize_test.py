@@ -17,7 +17,7 @@ class MarginalizeTestCase:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
+
     def test_marg(self):
         card = {'A': 2, 'B': 2}
 
@@ -29,19 +29,21 @@ class MarginalizeTestCase:
         marg_arrs = [arr.sum(axis=1) for arr in arrs]
 
         for arr, marg_arr in zip(arrs, marg_arrs):
-            obj = self.cls.from_array(arr, ['A','B'])
+            obj = self.cls.from_array(arr, ['A', 'B'])
             marg_obj = self.cls.from_array(marg_arr, ['A'])
             obj2 = self.cls.from_iterable(*operations.marginalize(obj, 'B'))
 
-            for state in itertools.product(*[range(obj2.cardinalities[var]) for var in obj2.variables]):
+            for state in itertools.product(
+                    *
+                [range(obj2.cardinalities[var]) for var in obj2.variables]):
                 # using dict to avoid variables missorder
                 state = dict(zip(obj2.variables, state))
                 x3 = obj2.access(state)
                 x4 = marg_obj.access(state)
-                
-                self.assertEqual(x3,x4)
 
-            
+                self.assertEqual(x3, x4)
+
+
 class MarginalizeClusterTestCase(unittest.TestCase, MarginalizeTestCase):
 
     def __init__(self, *args, **kwargs):
@@ -72,6 +74,7 @@ class MarginalizeIndexPairsTestCase(unittest.TestCase, MarginalizeTestCase):
         super().__init__(*args, **kwargs)
         self.cls = indexpairs.IndexPairs
         self.maxDiff = 1000
-        
+
+
 if __name__ == '__main__':
     unittest.main()

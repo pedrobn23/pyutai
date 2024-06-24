@@ -8,6 +8,8 @@ import numpy as np
 import statistics
 import unittest
 
+import scipy
+
 from pyutai import trees, nodes, distances
 
 
@@ -47,7 +49,7 @@ class EUDistanceTestCase(unittest.TestCase):
 def _kullback(elements):
     """Helper to check Kullback-Leibler distance."""
     mean = statistics.mean(elements)
-    return sum(element * (math.log(element) - math.log(mean))
+    return sum(element * (np.log(element) - np.log(mean))
                for element in elements if element != 0)
 
 
@@ -81,6 +83,10 @@ class KLDistanceTestCase(unittest.TestCase):
                     error2 = _kullback(arr[i:j + 1])
                     self.assertAlmostEqual(error1, error2, places=10)
 
-
+                    if sum(arr[i:j + 1]) > 0:
+                        error3 = _kullback([ k /  sum(arr[i:j + 1]) for k in arr[i:j + 1]])
+                        error4 = scipy.stats.entropy(arr[i:j + 1],
+                                                 [statistics.mean(arr[i:j + 1])] * (j-i+1))
+                        self.assertAlmostEqual(error3, error4, places=10)
 if __name__ == '__main__':
     unittest.main()

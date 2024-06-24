@@ -7,14 +7,13 @@ in One Dimension by Dynamic Programming. The R Journal. 3. 29-33. 10.32614/RJ-20
 import bisect
 import collections
 import dataclasses
-import math
 import itertools
+import math
 import statistics
 
 from typing import Dict, Iterable, List, Tuple
 
 import numpy as np
-import pprint
 
 from pyutai import distances
 from potentials import reductions, element
@@ -68,16 +67,6 @@ class ValueGrains:
             if index > 0:  # if smaller than any grain
                 if indexes in grain_list[index - 1]:
                     return value
-                
-
-        print(self)
-        print('division grain:', division_grain)
-        for value, grain_list in self.value_grains.items():
-            division_grain = Grain(indexes, type(self)._max_tuple(indexes))
-            index = bisect.bisect_left(grain_list, division_grain)
-
-            print('grain list:', grain_list)
-            print('index:', index)
 
         raise ValueError(
             f'Index configuration {zip(self.variables, indexes)} not found.')
@@ -134,20 +123,15 @@ class ValueGrains:
                                  cardinalities: Dict[str, int]) -> List[Grain]:
         """Generate a sorted grain list from a sorted list"""
 
-        # Special cases for sort lists
         if not sorted_list:
             raise ValueError(f'Excepted non empty list, got {sorted_list}')
-        elif len(sorted_list) == 1:
-            return [Grain(start=sorted_list[0], end=sorted_list[0])]
-        elif len(sorted_list) == 2:
-            return [Grain(start=sorted_list[0], end=sorted_list[1])]
 
         # General case
         grain_list = []
-        grain = Grain(start=sorted_list[0], end=sorted_list[1])
+        grain = Grain(start=sorted_list[0], end=sorted_list[0])
 
         # for the second element onward
-        for element in itertools.islice(sorted_list, 2, None):
+        for element in itertools.islice(sorted_list, 1, None):
             if element == cls._next_element(grain.end, variables,
                                             cardinalities):
                 grain.end = element
@@ -157,6 +141,8 @@ class ValueGrains:
 
         grain_list.append(grain)
         return grain_list
+
+
 
     @classmethod
     def from_iterable(cls, iter_: Iterable[element.Element], variables,
@@ -171,6 +157,8 @@ class ValueGrains:
             else:
                 state = element.state
             cluster[element.value].append(state)
+
+
 
         # Transform lists into grain lists
         value_grains = collections.defaultdict(list)

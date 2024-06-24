@@ -63,12 +63,10 @@ def total_size(o, handlers={}, verbose=False):
                         o, '__dict__'
                 ):  # some special builtin classes (such as `type(None)`) have neither
                     s += sizeof(o.__dict__)
-
             else:  # else, `o` has no attributes at all, so _getsizeof() actually returned the correct value
                 s += sum(
                     sizeof(getattr(o, x)) for x in o.__class__.__slots__
                     if hasattr(o, x))
-
         return s
 
     return sizeof(o)

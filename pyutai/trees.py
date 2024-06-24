@@ -173,7 +173,7 @@ class Tree:
     def from_array(cls,
                    data: np.ndarray,
                    variables: List[str],
-                   cardinalities: Dict[str, int],
+                   cardinalities: Dict[str, int] = None,
                    *,
                    selector: Callable[[Dict[int, int]], int] = None):
         """Create a Tree from a numpy.ndarray.
@@ -203,12 +203,16 @@ class Tree:
                 f'provided.\nArray shape: {data}, ' +
                 f'variables: {variables}.')
 
+        if cardinalities is None:
+            cardinalities = dict(zip(variables, data.shape))
+            
         for index, var in enumerate(variables):
             if data.shape[index] != cardinalities[var]:
                 raise ValueError(
                     'Array shape must match cardinalities; In variable ' +
                     f'{var}: received cardinality {cardinalities[var]},' +
                     f'in array {data.shape[index]}.')
+
 
         # adapter from IndexSelection to numpy Index-Tuple
         data_accessor = lambda x: data.item(tuple(x[var] for var in variables))
